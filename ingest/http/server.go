@@ -12,6 +12,7 @@ var currentServer *http.Server
 
 func SetupRoutes() {
 	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/GET_ALL_TREE_SENSOR", getAllTreeSensorHandler)
 }
 
 func StartServer() {

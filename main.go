@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ingest_http "ias/automation/ingest/http"
 	"log"
+	"os"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -14,6 +15,11 @@ func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("Error loading .env file: %s", err)
+	}
+
+	// Start the HTTP server if autostart is enabled
+	if often := os.Getenv("HTTP_SERVER_AUTOSTART"); often == "true" {
+		ingest_http.StartServer()
 	}
 
 	ingest_http.SetupRoutes()
