@@ -2,7 +2,6 @@ package pg
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -80,8 +79,6 @@ func (p *PostgresStorage) QueryData(query string) ([]PpjTreeSensor, error) {
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-	for _, sensor := range sensors {
-		fmt.Printf("Sensor: %+v\n", sensor)
-	}
+
 	return sensors, nil
 }

@@ -38,7 +38,7 @@ func main() {
 
 	// Start the HTTP server if autostart is enabled
 	if often := os.Getenv("HTTP_SERVER_AUTOSTART"); often == "true" {
-		ingest_http.SetupRoutes()
+		ingest_http.SetupRoutes(rdb)
 		ingest_http.StartServer()
 	}
 

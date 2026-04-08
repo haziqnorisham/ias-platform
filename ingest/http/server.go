@@ -5,14 +5,18 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	redis_lib "github.com/redis/go-redis/v9"
 )
 
 var IsRunning = false
 var currentServer *http.Server
 
-func SetupRoutes() {
+func SetupRoutes(rdb *redis_lib.Client) {
 	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/GET_ALL_TREE_SENSOR", getAllTreeSensorHandler)
+	http.HandleFunc("/GET_ALL_TREE_SENSOR", func(w http.ResponseWriter, r *http.Request) {
+		getAllTreeSensorHandler(w, r, rdb)
+	})
 }
 
 func StartServer() {
