@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	influxdb_utils "ias/automation/db/influxdb"
 	redis_utils "ias/automation/db/redis"
 	ingest_http "ias/automation/ingest/http"
 	"log"
@@ -34,6 +35,10 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("foo", val)
+
+	// Setup InfluxDB Connection
+	influxdb_utils.InitInfluxService("")
+	influxdb_utils.TestQuery()
 
 	// Start the HTTP server if autostart is enabled
 	if often := os.Getenv("HTTP_SERVER_AUTOSTART"); often == "true" {
