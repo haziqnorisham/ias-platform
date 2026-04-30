@@ -65,7 +65,7 @@ func TestQuery() {
 		log.Fatal("InfluxDB service not initialized")
 	}
 
-	query := `from(bucket: "")
+	query := `from(bucket: "STI")
   |> range(start: 0, stop: now())
   |> filter(fn: (r) => r["dev_eui"] == "")
   |> filter(fn: (r) => r["_measurement"] == "device_frmpayload_data_battery")
@@ -83,4 +83,11 @@ func TestQuery() {
 		fmt.Println("Longitude:", record.ValueByKey("longitude"))
 	}
 	results.Close()
+}
+
+func RunQuery(query string) (*api.QueryTableResult, error) {
+	if globalInfluxService == nil {
+		log.Fatal("InfluxDB service not initialized")
+	}
+	return globalInfluxService.Query(context.Background(), query)
 }

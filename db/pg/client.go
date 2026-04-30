@@ -39,6 +39,7 @@ func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 	}
 	return &PostgresStorage{DB: db}
 }
+
 func (p *PostgresStorage) QueryData(query string) ([]PpjTreeSensor, error) {
 	rows, err := p.DB.Query(query)
 	if err != nil {
