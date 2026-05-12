@@ -12,7 +12,6 @@ import (
 func SetupHcSchema() error {
 	slog.Info("Creating HC Schema", "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	err := ias_db.CreateHcSchemaIfNotExists()
 	if err != nil {
 		slog.Error("Failed to create HC schema", "error", err)
@@ -30,7 +29,6 @@ func GetAllDevices(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Retrieving all devices from HC schema", "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	devices, err := ias_db.GetAllDevices()
 	if err != nil {
 		slog.Error("Failed to retrieve devices", "error", err)
@@ -99,7 +97,6 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 	)
 
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 
 	records, err := ias_db.QueryRawIngest(body.Limit, body.Offset, body.SortByMsgID, body.Status)
 	if err != nil {
@@ -155,7 +152,6 @@ func GetDeviceProfiles(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Retrieving all device profiles", "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	profiles, err := ias_db.GetAllDeviceProfiles()
 	if err != nil {
 		slog.Error("Failed to retrieve device profiles", "error", err)
@@ -191,7 +187,6 @@ func GetDeviceProfileByID(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Retrieving device profile by ID", "profile_id", req.ProfileID, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	profile, err := ias_db.GetDeviceProfileByID(req.ProfileID)
 	if err != nil {
 		slog.Error("Failed to retrieve device profile", "profile_id", req.ProfileID, "error", err)
@@ -228,7 +223,6 @@ func GetDeviceByIDHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Retrieving device by ID", "device_id", req.DeviceID, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	device, err := ias_db.GetDeviceByID(req.DeviceID)
 	if err != nil {
 		slog.Error("Failed to retrieve device", "device_id", req.DeviceID, "error", err)
@@ -263,7 +257,6 @@ func CreateDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Creating device", "device_name", device.Name, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	if err := ias_db.InsertDevice(device); err != nil {
 		slog.Error("Failed to create device", "error", err)
 		http.Error(w, `{"error":"failed to create device"}`, http.StatusInternalServerError)
@@ -292,7 +285,6 @@ func UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Updating device", "device_id", device.Id, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	if err := ias_db.UpdateDevice(device); err != nil {
 		slog.Error("Failed to update device", "error", err)
 		http.Error(w, `{"error":"failed to update device"}`, http.StatusInternalServerError)
@@ -323,7 +315,6 @@ func DeleteDeviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Deleting device", "device_id", req.DeviceID, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	if err := ias_db.DeleteDevice(req.DeviceID); err != nil {
 		slog.Error("Failed to delete device", "error", err)
 		http.Error(w, `{"error":"failed to delete device"}`, http.StatusInternalServerError)
@@ -352,7 +343,6 @@ func CreateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Creating device profile", "profile_name", profile.ProfileName, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	id, err := ias_db.InsertDeviceProfile(profile)
 	if err != nil {
 		slog.Error("Failed to create device profile", "error", err)
@@ -386,7 +376,6 @@ func UpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Updating device profile", "profile_id", profile.ProfileID, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	if err := ias_db.UpdateDeviceProfile(profile); err != nil {
 		slog.Error("Failed to update device profile", "error", err)
 		http.Error(w, `{"error":"failed to update device profile"}`, http.StatusInternalServerError)
@@ -417,7 +406,6 @@ func DeleteDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Deleting device profile", "profile_id", req.ProfileID, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
-	defer ias_db.DB.Close()
 	if err := ias_db.DeleteDeviceProfile(req.ProfileID); err != nil {
 		slog.Error("Failed to delete device profile", "error", err)
 		http.Error(w, `{"error":"failed to delete device profile"}`, http.StatusInternalServerError)

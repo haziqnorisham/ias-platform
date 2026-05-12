@@ -41,7 +41,6 @@ func getAllTreeSensor(rdb *redis_lib.Client, c context.Context) []byte {
 	// Get sensors data if cache miss
 	pg_storage := ias_pg.NewPostgresStorage(nil)
 	sensors, err := pg_storage.QueryData("select * from ppj_tree_sensor")
-	defer pg_storage.DB.Close()
 	if err != nil {
 		print(err)
 	}

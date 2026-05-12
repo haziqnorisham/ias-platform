@@ -31,7 +31,20 @@ type HcDeviceProfile struct {
 const (
 	IngestStatusUnprocessed = "unprocessed"
 	IngestStatusProcessed   = "processed"
+	IngestStatusError       = "error"
 )
+
+// HcProcessedData represents a processed data record stored in PostgreSQL.
+type HcProcessedData struct {
+	ID               int64     `db:"id"`
+	RawMessageID     int64     `db:"raw_message_id"`
+	DeviceID         string    `db:"device_id"`
+	ProfileID        int       `db:"profile_id"`
+	ProcessedPayload string    `db:"processed_payload"`
+	Success          bool      `db:"success"`
+	ErrorMessage     string    `db:"error_message"`
+	ProcessedAt      time.Time `db:"processed_at"`
+}
 
 // HcRawIngest represents a raw ingest message stored in PostgreSQL.
 type HcRawIngest struct {
@@ -72,6 +85,16 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			model_number VARCHAR(100) NOT NULL DEFAULT '',
 			communications_protocol VARCHAR(50) NOT NULL DEFAULT '',
 			decoder TEXT DEFAULT ''
+		);`,
+		`CREATE TABLE IF NOT EXISTS hc_processed_data (
+			id BIGSERIAL PRIMARY KEY,
+			raw_message_id BIGINT REFERENCES hc_raw_ingest(message_id),
+			device_id VARCHAR(50),
+			profile_id INT,
+			processed_payload JSONB DEFAULT '{}',
+			success BOOLEAN NOT NULL DEFAULT true,
+			error_message TEXT DEFAULT '',
+			processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
 	}
 
@@ -278,5 +301,40 @@ func (p *PostgresStorage) UpdateDeviceProfile(profile HcDeviceProfile) error {
 func (p *PostgresStorage) DeleteDeviceProfile(profileID int) error {
 	query := `DELETE FROM hc_device_profiles WHERE profile_id = $1;`
 	_, err := p.DB.Exec(query, profileID)
+	return err
+}
+
+// GetUnprocessedIngestBatch fetches up to limit unprocessed hc_raw_ingest records
+// ordered by message_id ascending (oldest first).
+func (p *PostgresStorage) GetUnprocessedIngestBatch(limit int) ([]HcRawIngest, error) {
+	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $1 ORDER BY message_id ASC LIMIT $2;`
+	rows, err := p.DB.Query(query, IngestStatusUnprocessed, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []HcRawIngest
+	for rows.Next() {
+		var r HcRawIngest
+		if err := rows.Scan(&r.MessageID, &r.Topic, &r.Payload, &r.DeviceID, &r.IngestMethod, &r.Status, &r.ReceivedAt); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
+// UpdateRawIngestStatus updates the status of a raw ingest record.
+func (p *PostgresStorage) UpdateRawIngestStatus(messageID int64, status string) error {
+	query := `UPDATE hc_raw_ingest SET status = $1 WHERE message_id = $2;`
+	_, err := p.DB.Exec(query, status, messageID)
+	return err
+}
+
+// InsertProcessedData stores a processed data record.
+func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) error {
+	query := `INSERT INTO hc_processed_data (raw_message_id, device_id, profile_id, processed_payload, success, error_message) VALUES ($1, $2, $3, $4, $5, $6);`
+	_, err := p.DB.Exec(query, data.RawMessageID, data.DeviceID, data.ProfileID, data.ProcessedPayload, data.Success, data.ErrorMessage)
 	return err
 }

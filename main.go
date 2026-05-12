@@ -9,9 +9,11 @@ import (
 	"time"
 
 	influxdb_utils "ias/automation/db/influxdb"
+	ias_pg "ias/automation/db/pg"
 	redis_utils "ias/automation/db/redis"
 	ingest_http "ias/automation/ingest/http"
 	ingest_mqtt "ias/automation/ingest/mqtt"
+	"ias/automation/worker"
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -20,6 +22,8 @@ import (
 func main() {
 	initLogger()
 	loadEnv()
+	initSharedPool()
+	defer ias_pg.CloseSharedPool()
 	rdb := initRedis()
 	defer rdb.Close()
 	initInfluxDB()
@@ -27,7 +31,8 @@ func main() {
 	setupHCBackendIfEnabled()
 	startHTTPServerIfEnabled(rdb)
 	startMQTTIfEnabled()
-	waitForShutdown()
+	sched := startWorkerIfEnabled()
+	waitForShutdown(sched)
 }
 
 func initLogger() {
@@ -44,6 +49,15 @@ func loadEnv() {
 		os.Exit(1)
 	}
 	slog.Info("Environment variables loaded", "process", "main")
+}
+
+func initSharedPool() {
+	slog.Info("Initializing PostgreSQL shared connection pool", "process", "main")
+	if err := ias_pg.InitSharedPool(); err != nil {
+		slog.Error("Failed to initialize PostgreSQL shared pool", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("PostgreSQL shared connection pool initialized", "process", "main")
 }
 
 func initRedis() *redis.Client {
@@ -117,11 +131,26 @@ func startMQTTIfEnabled() {
 	slog.Info("MQTT client connected and subscribed", "process", "main")
 }
 
-func waitForShutdown() {
+func startWorkerIfEnabled() *worker.Scheduler {
+	if os.Getenv("WORKER_ENABLED") != "true" {
+		return nil
+	}
+	slog.Info("Job scheduler is enabled, starting worker", "process", "main")
+	sched := worker.NewScheduler()
+	sched.Start()
+	return sched
+}
+
+func waitForShutdown(sched *worker.Scheduler) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigCh
 	slog.Info("Received signal, shutting down", "signal", sig.String())
+
+	if sched != nil {
+		slog.Info("Stopping job scheduler", "process", "main")
+		sched.Stop()
+	}
 
 	if ingest_http.IsRunning {
 		slog.Info("Shutting down HTTP server", "process", "main")

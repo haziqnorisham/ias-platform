@@ -51,7 +51,6 @@ func HcDbHandler() MessageHandler {
 		deviceID := extractDeviceID(topic)
 
 		db := ias_pg.NewPostgresStorage(nil)
-		defer db.DB.Close()
 
 		if err := db.InsertRawIngest(topic, payload, deviceID, "mqtt", ias_pg.IngestStatusUnprocessed); err != nil {
 			slog.Error("Failed to store raw ingest",
