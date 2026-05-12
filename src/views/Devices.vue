@@ -5,6 +5,7 @@ import Chip from 'primevue/chip';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 
 import { getAllDevices, createDevice, updateDevice, deleteDevice, getDeviceProfiles } from '@/api/posts'
@@ -192,9 +193,10 @@ onMounted(() => {
             </div>
             <img src="/MCS.png" style="height: 10rem;">
             <div class="device_details">
-                <div class="italic">Description: {{ device.Description || '—' }}</div>
-                <div class="italic">Profile ID: {{ device.ProfileID || '—' }}</div>
-                <div class="italic">Location: {{ device.LocationLabel || '—' }}</div>
+                <div class="detail-row"><span class="detail-label">Name:</span> <span class="detail-value">{{ device.Name || '—' }}</span></div>
+                <div class="detail-row"><span class="detail-label">Description:</span> <span class="detail-value">{{ device.Description || '—' }}</span></div>
+                <div class="detail-row"><span class="detail-label">Profile ID:</span> <span class="detail-value">{{ device.ProfileID || '—' }}</span></div>
+                <div class="detail-row"><span class="detail-label">Location:</span> <span class="detail-value">{{ device.LocationLabel || '—' }}</span></div>
             </div>
             </div>
         </div>
@@ -229,22 +231,26 @@ onMounted(() => {
                     class="form-input"
                 />
             </div>
-            <div class="form-field">
+            <div class="form-field form-field-wide">
                 <label for="description">Description</label>
-                <InputText 
+                <Textarea 
                     id="description" 
                     v-model="newDevice.description" 
                     placeholder="Enter description"
                     class="form-input"
+                    rows="3"
+                    autoResize
                 />
             </div>
-            <div class="form-field">
+            <div class="form-field form-field-wide">
                 <label for="location_label">Location Label</label>
-                <InputText 
+                <Textarea 
                     id="location_label" 
                     v-model="newDevice.location_label" 
                     placeholder="Enter location"
                     class="form-input"
+                    rows="3"
+                    autoResize
                 />
             </div>
             <div class="form-field">
@@ -328,6 +334,23 @@ onMounted(() => {
     font-weight: bold;
 }
 
+.detail-row {
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 31ch;
+}
+
+.detail-label {
+    font-style: italic;
+    color: #888;
+}
+
+.detail-value {
+    font-style: normal;
+    color: #e0e0e0;
+}
+
 .device_info {
     display: flex;
     flex-direction: column;
@@ -335,6 +358,8 @@ onMounted(() => {
     height: 100%;
     padding: 12px;
     padding-right: 5px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .italic {
@@ -347,6 +372,9 @@ onMounted(() => {
     font-weight: bold;
     font-size: 1.25rem;
     text-decoration: underline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 11ch;
 }
 
 /* ── Clickable Device Name ──────────────────────────────────── */
@@ -407,6 +435,10 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+}
+
+.form-field-wide {
+    grid-column: 1 / -1;
 }
 
 .form-field label {
