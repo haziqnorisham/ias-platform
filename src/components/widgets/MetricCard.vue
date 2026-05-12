@@ -48,9 +48,10 @@ defineProps({
 }
 
 .metric-card__title {
-  font-size: 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
   color: #aaa;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .metric-card__value {

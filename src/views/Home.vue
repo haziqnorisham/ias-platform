@@ -20,8 +20,8 @@
         :i="item.i"
         class="grid-item"
       >
-        <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : ''">
-          <MetricCard v-if="item.type === 'card'" :value="item.cardValue" hide-title />
+        <WidgetWrapper  :title="item.type === 'card' ? item.cardTitle : ''">
+          <MetricCard v-if="item.type === 'card'" :title="item.cardTitle" :value="item.cardValue" />
           <BarChart
             v-else-if="item.type === 'barchart'"
             title="Example Bar Chart"
