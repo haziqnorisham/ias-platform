@@ -1,17 +1,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-import Chip from 'primevue/chip';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Select from 'primevue/select';
-
-import { getAllDevices, createDevice, updateDevice, deleteDevice, getDeviceProfiles } from '@/api/posts'
 import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from "primevue/usetoast";
+
+import { getAllDevices, createDevice, updateDevice, deleteDevice, getDeviceProfiles } from '@/api/posts'
+
+import DeviceCard from '@/components/devices/DeviceCard.vue'
+import DeviceFormDialog from '@/components/devices/DeviceFormDialog.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+
 const toast = useToast();
 const showError = (summary, detail) => {
     toast.add({ severity: 'error', summary: summary, detail: detail, life: 3000 });
@@ -27,8 +27,8 @@ async function getAllDevicesHandler() {
         const result = await getAllDevices()
         result && result.forEach(function(obj){
             devices.value.push(obj)
-        })        
-    } catch (error) { 
+        })
+    } catch (error) {
         console.log(error)
         showError('API Call Failed', 'Failed to fetch devices details.')
     } finally {
@@ -36,58 +36,7 @@ async function getAllDevicesHandler() {
     }
 }
 
-/* hc_devices table structure:
-    - id INT NOT NULL (user-provided, not auto-assigned)
-    - name VARCHAR(100) NOT NULL
-    - description TEXT DEFAULT ''
-    - profile_id INT REFERENCES hc_device_profiles(profile_id)
-    - status VARCHAR(50) NOT NULL DEFAULT 'inactive'
-    - location_label VARCHAR(100) DEFAULT ''
-*/
-
-// ── Add / Edit Device Dialog ───────────────────────────────────
-const dialogVisible = ref(false)
-const dialogMode = ref('create') // 'create' | 'edit'
-const editingDeviceId = ref(null)
 const deviceProfiles = ref([])
-
-const newDevice = ref({
-    id: '',
-    name: '',
-    description: '',
-    location_label: '',
-    profile_id: null
-})
-
-function openAddDeviceDialog() {
-    dialogMode.value = 'create'
-    editingDeviceId.value = null
-    newDevice.value = {
-        id: '',
-        name: '',
-        description: '',
-        location_label: '',
-        profile_id: null
-    }
-    dialogVisible.value = true
-}
-
-function openEditDeviceDialog(device) {
-    dialogMode.value = 'edit'
-    editingDeviceId.value = device.Id
-    newDevice.value = {
-        id: String(device.Id),
-        name: device.Name || '',
-        description: device.Description || '',
-        location_label: device.LocationLabel || '',
-        profile_id: device.ProfileID || null
-    }
-    dialogVisible.value = true
-}
-
-function closeDialog() {
-    dialogVisible.value = false
-}
 
 async function fetchDeviceProfiles() {
     try {
@@ -103,28 +52,39 @@ async function fetchDeviceProfiles() {
     }
 }
 
-async function handleSaveDevice() {
+onMounted(() => {
+    getAllDevicesHandler()
+    fetchDeviceProfiles()
+})
+
+// ── Device Form Dialog ──────────────────────────────────────
+const formVisible = ref(false)
+const editingDevice = ref(null)
+
+function openAddDeviceDialog() {
+    editingDevice.value = null
+    formVisible.value = true
+}
+
+function openEditDeviceDialog(device) {
+    editingDevice.value = device
+    formVisible.value = true
+}
+
+async function handleSaveDevice(payload) {
     loading.value = false
     try {
-        const payload = {
-            Id: parseInt(newDevice.value.id),
-            Name: newDevice.value.name,
-            Description: newDevice.value.description || null,
-            LocationLabel: newDevice.value.location_label || null,
-            ProfileID: newDevice.value.profile_id
-        }
-
-        if (dialogMode.value === 'create') {
-            const result = await createDevice(payload)
-            console.log('Device created:', result)
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Device created successfully.', life: 3000 })
-        } else {
+        if (editingDevice.value) {
             const result = await updateDevice(payload)
             console.log('Device updated:', result)
             toast.add({ severity: 'success', summary: 'Success', detail: 'Device updated successfully.', life: 3000 })
+        } else {
+            const result = await createDevice(payload)
+            console.log('Device created:', result)
+            toast.add({ severity: 'success', summary: 'Success', detail: 'Device created successfully.', life: 3000 })
         }
 
-        closeDialog()
+        formVisible.value = false
         devices.value = []
         await getAllDevicesHandler()
     } catch (error) {
@@ -135,22 +95,24 @@ async function handleSaveDevice() {
     }
 }
 
-// ── Delete Device ──────────────────────────────────────────────
-const confirmDeleteVisible = ref(false)
+// ── Delete Device ───────────────────────────────────────────
+const confirmVisible = ref(false)
+const deviceToDelete = ref(null)
 
-function openDeleteConfirmation() {
-    confirmDeleteVisible.value = true
+function handleDeleteRequest() {
+    deviceToDelete.value = editingDevice.value
+    confirmVisible.value = true
 }
 
-async function handleDeleteDevice() {
+async function handleDeleteConfirm() {
     loading.value = false
-    confirmDeleteVisible.value = false
     try {
-        const payload = { device_id: String(editingDeviceId.value) }
+        const payload = { device_id: String(deviceToDelete.value.Id) }
         const result = await deleteDevice(payload)
         console.log('Device deleted:', result)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Device deleted successfully.', life: 3000 })
-        closeDialog()
+
+        formVisible.value = false
         devices.value = []
         await getAllDevicesHandler()
     } catch (error) {
@@ -160,12 +122,6 @@ async function handleDeleteDevice() {
         loading.value = false
     }
 }
-// ─────────────────────────────────────────────────────────────────
-
-onMounted(() => {
-  getAllDevicesHandler()
-  fetchDeviceProfiles()
-})
 </script>
 
 <template>
@@ -184,112 +140,30 @@ onMounted(() => {
     </div>
 
     <div v-else class="devices-grid">
-        <div v-for="device in devices">
-            <div class="device_card">
-                <div class="device_info">
-                <div class="italic">Device ID: {{ device.Id }}</div>
-                <div class="bold device-name-link" @click="openEditDeviceDialog(device)">{{ device.Name }}</div>
-                <Chip :label="device.Status || 'Unknown'" icon="pi pi-circle-fill" class="chip_style" :class="device.Status === 'active' ? 'chip_active' : 'chip_inactive'" />
-            </div>
-            <img src="/MCS.png" style="height: 10rem;">
-            <div class="device_details">
-                <div class="detail-row"><span class="detail-label">Name:</span> <span class="detail-value">{{ device.Name || '—' }}</span></div>
-                <div class="detail-row"><span class="detail-label">Description:</span> <span class="detail-value">{{ device.Description || '—' }}</span></div>
-                <div class="detail-row"><span class="detail-label">Profile ID:</span> <span class="detail-value">{{ device.ProfileID || '—' }}</span></div>
-                <div class="detail-row"><span class="detail-label">Location:</span> <span class="detail-value">{{ device.LocationLabel || '—' }}</span></div>
-            </div>
-            </div>
-        </div>
+        <DeviceCard
+            v-for="device in devices"
+            :key="device.Id"
+            :device="device"
+            @edit="openEditDeviceDialog"
+        />
     </div>
 
-    <!-- Add / Edit Device Dialog -->
-    <Dialog 
-        v-model:visible="dialogVisible" 
-        :header="dialogMode === 'create' ? 'New Device' : 'Edit Device'" 
-        :modal="true" 
-        :closable="false"
-        :style="{ width: '600px' }"
-        class="device-dialog"
-    >
-        <div class="form-grid">
-            <div class="form-field">
-                <label for="device_id">Device ID <span class="required">*</span></label>
-                <InputText 
-                    id="device_id" 
-                    v-model="newDevice.id" 
-                    placeholder="Enter device ID (numeric)"
-                    :disabled="dialogMode === 'edit'"
-                    class="form-input"
-                />
-            </div>
-            <div class="form-field">
-                <label for="device_name">Name <span class="required">*</span></label>
-                <InputText 
-                    id="device_name" 
-                    v-model="newDevice.name" 
-                    placeholder="Enter device name"
-                    class="form-input"
-                />
-            </div>
-            <div class="form-field form-field-wide">
-                <label for="description">Description</label>
-                <Textarea 
-                    id="description" 
-                    v-model="newDevice.description" 
-                    placeholder="Enter description"
-                    class="form-input"
-                    rows="3"
-                    autoResize
-                />
-            </div>
-            <div class="form-field form-field-wide">
-                <label for="location_label">Location Label</label>
-                <Textarea 
-                    id="location_label" 
-                    v-model="newDevice.location_label" 
-                    placeholder="Enter location"
-                    class="form-input"
-                    rows="3"
-                    autoResize
-                />
-            </div>
-            <div class="form-field">
-                <label for="profile">Device Profile <span class="required">*</span></label>
-                <Select 
-                    id="profile"
-                    v-model="newDevice.profile_id" 
-                    :options="deviceProfiles"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Select a device profile"
-                    class="form-input"
-                />
-            </div>
-        </div>
-        <template #footer>
-            <Button v-if="dialogMode === 'edit'" label="Delete" icon="pi pi-trash" @click="openDeleteConfirmation" severity="danger" class="p-button-text" />
-            <div class="footer-right">
-                <Button label="Cancel" icon="pi pi-times" @click="closeDialog" class="p-button-text" />
-                <Button :label="dialogMode === 'create' ? 'Save Device' : 'Update Device'" icon="pi pi-save" @click="handleSaveDevice" />
-            </div>
-        </template>
-    </Dialog>
+    <DeviceFormDialog
+        v-model:visible="formVisible"
+        :device="editingDevice"
+        :device-profiles="deviceProfiles"
+        @save="handleSaveDevice"
+        @request-delete="handleDeleteRequest"
+    />
 
-    <!-- Delete Confirmation Dialog -->
-    <Dialog
-        v-model:visible="confirmDeleteVisible"
-        header="Delete Device"
-        :modal="true"
-        :closable="false"
-        :style="{ width: '420px' }"
-    >
-        <p class="confirm-text">Are you sure you want to delete this device? This action cannot be undone.</p>
-        <template #footer>
-            <Button label="Cancel" icon="pi pi-times" @click="confirmDeleteVisible = false" class="p-button-text" />
-            <Button label="Delete" icon="pi pi-trash" @click="handleDeleteDevice" severity="danger" />
-        </template>
-    </Dialog>
-    
+    <ConfirmDialog
+        v-model:visible="confirmVisible"
+        title="Delete Device"
+        message="Are you sure you want to delete this device? This action cannot be undone."
+        confirm-label="Delete"
+        severity="danger"
+        @confirm="handleDeleteConfirm"
+    />
 </template>
 
 <style scoped>
@@ -304,16 +178,13 @@ onMounted(() => {
     gap: 20px;
 }
 
-.devices-grid > div {
-    flex: 0 0 480px;
-}
-
 .device_card {
     background-image: linear-gradient(to right, #2A2A2E 0%, #18181B 30%);
     border-radius: 12px;
     display: flex;
     flex-direction: row;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 480px;
 }
 
 .empty_card {
@@ -321,34 +192,6 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     min-height: 12rem;
-}
-
-.device_details {
-    display: flex;
-    flex-direction: column;
-    white-space: nowrap;
-    height: 100%;
-    padding: 12px;
-    gap: 0.65rem;
-    margin-left: 20px;
-    font-weight: bold;
-}
-
-.detail-row {
-    font-size: 0.8rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 31ch;
-}
-
-.detail-label {
-    font-style: italic;
-    color: #888;
-}
-
-.detail-value {
-    font-style: normal;
-    color: #e0e0e0;
 }
 
 .device_info {
@@ -371,40 +214,6 @@ onMounted(() => {
     margin-top: 0.25rem;
     font-weight: bold;
     font-size: 1.25rem;
-    text-decoration: underline;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 11ch;
-}
-
-/* ── Clickable Device Name ──────────────────────────────────── */
-.device-name-link {
-    cursor: pointer;
-    transition: color 0.15s, text-decoration 0.15s;
-}
-
-.device-name-link:hover {
-    color: #90caf9;
-    text-decoration: underline;
-}
-
-.chip_style {
-    font-size: 0.8rem;
-    margin-top: 1rem;
-}
-
-.chip_active {
-    background-color: #2d5a4e;
-    box-shadow: 0 0 8px rgba(72, 137, 123, 0.45);
-}
-
-.chip_active :deep(.p-chip-icon) {
-    color: #4cff88;
-}
-
-.chip_inactive {
-    background-color: #3a3a3e;
-    box-shadow: 0 0 8px rgba(72, 137, 123, 0.15);
 }
 
 .global-spinner {
@@ -413,64 +222,5 @@ onMounted(() => {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 9999;
-}
-
-/* ── Add Device Dialog ──────────────────────────────────── */
-.device-dialog :deep(.p-dialog-header) {
-    border-bottom: 1px solid #212121;
-    padding: 1.25rem 1.5rem;
-}
-
-.device-dialog :deep(.p-dialog-content) {
-    padding: 1.5rem;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-}
-
-.form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.form-field-wide {
-    grid-column: 1 / -1;
-}
-
-.form-field label {
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #a0a0a0;
-}
-
-.form-field .required {
-    color: #f44336;
-}
-
-.form-input {
-    width: 100%;
-}
-
-.footer-right {
-    display: flex;
-    gap: 0.5rem;
-    margin-left: auto;
-}
-
-/* ── Dialog Footer ──────────────────────────────────── */
-.device-dialog :deep(.p-dialog-footer) {
-    display: flex;
-    align-items: center;
-}
-
-.confirm-text {
-    color: #ccc;
-    margin: 0;
-    line-height: 1.5;
 }
 </style>
