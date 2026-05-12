@@ -20,8 +20,8 @@
         :i="item.i"
         class="grid-item"
       >
-        <WidgetWrapper>
-          <Card v-if="item.type === 'card'" :title="item.cardTitle" :value="item.cardValue" />
+        <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : ''">
+          <MetricCard v-if="item.type === 'card'" :value="item.cardValue" hide-title />
           <BarChart
             v-else-if="item.type === 'barchart'"
             title="Example Bar Chart"
@@ -44,7 +44,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
-import Card from '../components/Card.vue'
+import MetricCard from '../components/widgets/MetricCard.vue'
 import BarChart from '../components/charts/BarChart.vue'
 import eSampleChart from '../components/charts/eSampleChart.vue'
 import WidgetWrapper from '../components/widgets/WidgetWrapper.vue'

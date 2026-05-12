@@ -1,6 +1,6 @@
 <template>
-  <div class="widget-wrapper" :class="[`widget-wrapper--${variant}`, { 'widget-wrapper--no-header': !showHeader }]">
-    <div v-if="showHeader" class="widget-header">
+  <div class="widget-wrapper" :class="[`widget-wrapper--${variant}`, { 'widget-wrapper--no-header': !headerVisible }]">
+    <div v-if="headerVisible" class="widget-header">
       <div class="widget-header__leading">
         <span v-if="icon" class="widget-header__icon" aria-hidden="true">{{ icon }}</span>
         <span v-if="title" class="widget-header__title">{{ title }}</span>
@@ -25,9 +25,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, useSlots } from 'vue'
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+const slots = useSlots()
 
 const props = defineProps({
   /** Optional display title shown in the header */
@@ -42,7 +42,7 @@ const props = defineProps({
     default: '',
   },
 
-  /** Controls whether the header bar is rendered at all */
+  /** Controls whether the header bar is rendered at all. When true (default), header auto-hides if it would be empty. */
   showHeader: {
     type: Boolean,
     default: true,
@@ -77,7 +77,10 @@ const props = defineProps({
   },
 })
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
+const headerVisible = computed(() => {
+  if (!props.showHeader) return false
+  return !!(props.title || props.icon || slots.actions || props.draggable)
+})
 
 const bodyStyle = computed(() => ({
   padding: props.bodyPadding,
