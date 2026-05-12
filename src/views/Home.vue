@@ -94,8 +94,7 @@ onMounted(async () => {
 <style scoped>
 .page-container {
   padding: 8px;
-  height: calc(100vh - 70px);
-  overflow: auto;
+  min-height: 100%;
 }
 
 .grid-container {
