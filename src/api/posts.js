@@ -1,0 +1,15 @@
+import { apiFetch } from './index'
+
+export const testApi = () => apiFetch('/api/test', {method: 'POST'})
+export const getAllDevices = () => apiFetch('/api/get_all_devices', {method: 'POST'})
+export const getRawIngest = (body) => apiFetch('/api/get_raw_ingest', { method: 'POST', body: JSON.stringify(body) })
+export const reprocessIngest = (body) => apiFetch('/api/reprocess_ingest', { method: 'POST', body: JSON.stringify(body) })
+export const getPost = (id) => apiFetch(`/posts/${id}`)
+export const createPost = (body) => apiFetch('/posts', { method: 'POST', body: JSON.stringify(body) })
+export const createDeviceProfile = (body) => apiFetch('/api/create_device_profile', { method: 'POST', body: JSON.stringify(body) })
+export const updateDeviceProfile = (body) => apiFetch('/api/update_device_profile', { method: 'POST', body: JSON.stringify(body) })
+export const deleteDeviceProfile = (body) => apiFetch('/api/delete_device_profile', { method: 'POST', body: JSON.stringify(body) })
+export const getDeviceProfiles = () => apiFetch('/api/get_device_profiles', { method: 'POST' })
+export const createDevice = (body) => apiFetch('/api/create_device', { method: 'POST', body: JSON.stringify(body) })
+export const updateDevice = (body) => apiFetch('/api/update_device', { method: 'POST', body: JSON.stringify(body) })
+export const deleteDevice = (body) => apiFetch('/api/delete_device', { method: 'POST', body: JSON.stringify(body) })
