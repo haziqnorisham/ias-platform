@@ -5,6 +5,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
+import ToggleSwitch from 'primevue/toggleswitch';
 
 const props = defineProps({
     visible: {
@@ -30,7 +31,8 @@ const form = ref({
     name: '',
     description: '',
     location_label: '',
-    profile_id: null
+    profile_id: null,
+    isActive: true
 });
 
 watch(() => props.visible, (isVisible) => {
@@ -41,7 +43,8 @@ watch(() => props.visible, (isVisible) => {
                 name: props.device.Name || '',
                 description: props.device.Description || '',
                 location_label: props.device.LocationLabel || '',
-                profile_id: props.device.ProfileID || null
+                profile_id: props.device.ProfileID || null,
+                isActive: props.device.Status === 'active'
             };
         } else {
             form.value = {
@@ -49,7 +52,8 @@ watch(() => props.visible, (isVisible) => {
                 name: '',
                 description: '',
                 location_label: '',
-                profile_id: null
+                profile_id: null,
+                isActive: true
             };
         }
     }
@@ -65,7 +69,8 @@ function handleSave() {
         Name: form.value.name,
         Description: form.value.description || null,
         LocationLabel: form.value.location_label || null,
-        ProfileID: form.value.profile_id
+        ProfileID: form.value.profile_id,
+        Status: form.value.isActive ? 'active' : 'inactive'
     };
     emit('save', payload);
 }
@@ -86,6 +91,11 @@ function handleDeleteRequest() {
         class="device-dialog"
     >
         <div class="form-grid">
+            <div class="form-field form-field-wide">
+                <label for="status">Status</label>
+                <ToggleSwitch v-model="form.isActive" inputId="status" />
+                <div class="toggle-label">{{ form.isActive ? 'Active' : 'Inactive' }}</div>
+            </div>
             <div class="form-field">
                 <label for="device_id">Device ID <span class="required">*</span></label>
                 <InputText
@@ -194,6 +204,12 @@ function handleDeleteRequest() {
 
 .form-input {
     width: 100%;
+}
+
+.toggle-label {
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    margin-top: 0.25rem;
 }
 
 .footer-right {
