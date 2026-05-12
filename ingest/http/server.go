@@ -30,8 +30,35 @@ func SetupRoutes(rdb *redis_lib.Client) {
 		http.HandleFunc("/api/get_all_devices", func(w http.ResponseWriter, r *http.Request) {
 			GetAllDevices(w, r)
 		})
+		http.HandleFunc("/api/get_device", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceByIDHandler(w, r)
+		})
+		http.HandleFunc("/api/create_device", func(w http.ResponseWriter, r *http.Request) {
+			CreateDevice(w, r)
+		})
+		http.HandleFunc("/api/update_device", func(w http.ResponseWriter, r *http.Request) {
+			UpdateDeviceHandler(w, r)
+		})
+		http.HandleFunc("/api/delete_device", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDeviceHandler(w, r)
+		})
 		http.HandleFunc("/api/get_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
 			GetRawIngest(w, r)
+		})
+		http.HandleFunc("/api/get_device_profiles", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceProfiles(w, r)
+		})
+		http.HandleFunc("/api/get_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceProfileByID(w, r)
+		})
+		http.HandleFunc("/api/create_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			CreateDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/update_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			UpdateDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/delete_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDeviceProfile(w, r)
 		})
 	}
 	http.HandleFunc("/GET_ALL_TREE_SENSOR", func(w http.ResponseWriter, r *http.Request) {

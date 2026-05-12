@@ -1,14 +1,30 @@
 package pg
 
-import "time"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
-type Hc_Device_Metadata struct {
-	DeviceId    string  `db:"id"`
-	DeviceEui   string  `db:"device_eui"`
-	DeviceName  string  `db:"device_name"`
-	Latitude    float64 `db:"latitude"`
-	Longitude   float64 `db:"longitude"`
-	CreatedDate string  `db:"created_date"`
+type HcDevice struct {
+	Id              int     `db:"id"`
+	Name            string  `db:"name"`
+	Description     *string `db:"description"`
+	ProfileID       *int    `db:"profile_id"`
+	Status          string  `db:"status"`
+	LocationLabel   *string `db:"location_label"`
+	CreatedDate     string  `db:"created_date"`
+	LastUpdatedDate string  `db:"last_updated_date"`
+}
+
+// HcDeviceProfile represents a device profile stored in PostgreSQL.
+type HcDeviceProfile struct {
+	ProfileID              int    `db:"profile_id"`
+	ProfileName            string `db:"profile_name"`
+	Manufacturer           string `db:"manufacturer"`
+	ModelNumber            string `db:"model_number"`
+	CommunicationsProtocol string `db:"communications_protocol"`
+	Decoder                string `db:"decoder"`
 }
 
 // Ingest status constants.
@@ -30,13 +46,15 @@ type HcRawIngest struct {
 
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS hc_device_metadata (
+		`CREATE TABLE IF NOT EXISTS hc_devices (
 			id SERIAL PRIMARY KEY,
-			device_eui VARCHAR(50) UNIQUE NOT NULL,
-			device_name VARCHAR(100) NOT NULL,
-			latitude DECIMAL(10, 8),
-			longitude DECIMAL(11, 8),
-			created_date DATE DEFAULT CURRENT_DATE
+			name VARCHAR(100) NOT NULL,
+			description TEXT DEFAULT '',
+			profile_id INT REFERENCES hc_device_profiles(profile_id),
+			status VARCHAR(50) NOT NULL DEFAULT 'active',
+			location_label VARCHAR(255) DEFAULT '',
+			created_date DATE DEFAULT CURRENT_DATE,
+			last_updated_date DATE DEFAULT CURRENT_DATE
 		);`,
 		`CREATE TABLE IF NOT EXISTS hc_raw_ingest (
 			message_id BIGSERIAL PRIMARY KEY,
@@ -46,6 +64,14 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			ingest_method VARCHAR(20) NOT NULL DEFAULT 'mqtt',
 			status VARCHAR(20) NOT NULL DEFAULT 'unprocessed',
 			received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);`,
+		`CREATE TABLE IF NOT EXISTS hc_device_profiles (
+			profile_id SERIAL PRIMARY KEY,
+			profile_name VARCHAR(100) NOT NULL,
+			manufacturer VARCHAR(100) NOT NULL DEFAULT '',
+			model_number VARCHAR(100) NOT NULL DEFAULT '',
+			communications_protocol VARCHAR(50) NOT NULL DEFAULT '',
+			decoder TEXT DEFAULT ''
 		);`,
 	}
 
@@ -64,14 +90,35 @@ func (p *PostgresStorage) InsertRawIngest(topic string, payload []byte, deviceID
 	return err
 }
 
-// QueryRawIngest retrieves raw ingest records with an optional limit (default 100).
-// Results are ordered by message_id descending so higher IDs (newer messages) appear first.
-func (p *PostgresStorage) QueryRawIngest(limit int) ([]HcRawIngest, error) {
+// QueryRawIngest retrieves raw ingest records with pagination, optional status filter, and sort order.
+// Parameters:
+//   - limit: max records to return (default 100)
+//   - offset: number of records to skip (for pagination)
+//   - sortByMsgID: "asc" or "desc" ordering by message_id (default "desc")
+//   - status: "" for all, or "processed"/"unprocessed" to filter
+func (p *PostgresStorage) QueryRawIngest(limit int, offset int, sortByMsgID string, status string) ([]HcRawIngest, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest ORDER BY message_id DESC LIMIT $1;`
-	rows, err := p.DB.Query(query, limit)
+	// Normalise sort direction to lowercase for case-insensitive matching
+	sortByMsgID = strings.ToLower(sortByMsgID)
+	if sortByMsgID != "asc" {
+		sortByMsgID = "desc"
+	}
+
+	var query string
+	var args []interface{}
+	argIdx := 1
+
+	if status != "" {
+		query = `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $` + strconv.Itoa(argIdx) + ` ORDER BY message_id ` + sortByMsgID + ` LIMIT $` + strconv.Itoa(argIdx+1) + ` OFFSET $` + strconv.Itoa(argIdx+2) + `;`
+		args = append(args, status, limit, offset)
+	} else {
+		query = `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest ORDER BY message_id ` + sortByMsgID + ` LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1) + `;`
+		args = append(args, limit, offset)
+	}
+
+	rows, err := p.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +135,26 @@ func (p *PostgresStorage) QueryRawIngest(limit int) ([]HcRawIngest, error) {
 	return records, rows.Err()
 }
 
-func (p *PostgresStorage) GetAllDevices() ([]Hc_Device_Metadata, error) {
-	query := `SELECT id, device_eui, device_name, latitude, longitude, created_date FROM hc_device_metadata;`
+// CountRawIngest returns the total number of records matching the optional status filter.
+func (p *PostgresStorage) CountRawIngest(status string) (int, error) {
+	var query string
+	var args []interface{}
+	if status != "" {
+		query = `SELECT COUNT(*) FROM hc_raw_ingest WHERE status = $1;`
+		args = append(args, status)
+	} else {
+		query = `SELECT COUNT(*) FROM hc_raw_ingest;`
+	}
+
+	var total int
+	if err := p.DB.QueryRow(query, args...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (p *PostgresStorage) GetAllDevices() ([]HcDevice, error) {
+	query := `SELECT id, name, description, profile_id, status, location_label, created_date, last_updated_date FROM hc_devices;`
 	rows, err := p.DB.Query(query)
 	if err != nil {
 		defer rows.Close()
@@ -97,17 +162,19 @@ func (p *PostgresStorage) GetAllDevices() ([]Hc_Device_Metadata, error) {
 	}
 	defer rows.Close()
 
-	var devices []Hc_Device_Metadata
+	var devices []HcDevice
 
 	for rows.Next() {
-		var hc_device Hc_Device_Metadata
+		var hc_device HcDevice
 		err := rows.Scan(
-			&hc_device.DeviceId,
-			&hc_device.DeviceEui,
-			&hc_device.DeviceName,
-			&hc_device.Latitude,
-			&hc_device.Longitude,
+			&hc_device.Id,
+			&hc_device.Name,
+			&hc_device.Description,
+			&hc_device.ProfileID,
+			&hc_device.Status,
+			&hc_device.LocationLabel,
 			&hc_device.CreatedDate,
+			&hc_device.LastUpdatedDate,
 		)
 		if err != nil {
 			return nil, err
@@ -116,4 +183,100 @@ func (p *PostgresStorage) GetAllDevices() ([]Hc_Device_Metadata, error) {
 	}
 
 	return devices, nil
+}
+
+// GetDeviceByID retrieves a single device by its id (serial primary key).
+func (p *PostgresStorage) GetDeviceByID(deviceID string) (*HcDevice, error) {
+	query := `SELECT id, name, description, profile_id, status, location_label, created_date, last_updated_date FROM hc_devices WHERE id = $1;`
+	var d HcDevice
+	err := p.DB.QueryRow(query, deviceID).Scan(
+		&d.Id,
+		&d.Name,
+		&d.Description,
+		&d.ProfileID,
+		&d.Status,
+		&d.LocationLabel,
+		&d.CreatedDate,
+		&d.LastUpdatedDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// InsertDevice stores a new device into hc_devices.
+func (p *PostgresStorage) InsertDevice(device HcDevice) error {
+	query := `INSERT INTO hc_devices (id, name, description, profile_id, status, location_label)
+		VALUES ($1, $2, $3, $4, $5, $6);`
+	_, err := p.DB.Exec(query, device.Id, device.Name, device.Description, device.ProfileID, device.Status, device.LocationLabel)
+	return err
+}
+
+// UpdateDevice updates an existing device identified by id.
+func (p *PostgresStorage) UpdateDevice(device HcDevice) error {
+	query := `UPDATE hc_devices SET name=$1, description=$2, profile_id=$3, status=$4, location_label=$5, last_updated_date=CURRENT_DATE WHERE id=$6;`
+	_, err := p.DB.Exec(query, device.Name, device.Description, device.ProfileID, device.Status, device.LocationLabel, device.Id)
+	return err
+}
+
+// DeleteDevice removes a device by its id.
+func (p *PostgresStorage) DeleteDevice(deviceID string) error {
+	query := `DELETE FROM hc_devices WHERE id = $1;`
+	_, err := p.DB.Exec(query, deviceID)
+	return err
+}
+
+// InsertDeviceProfile stores a new device profile into hc_device_profiles.
+func (p *PostgresStorage) InsertDeviceProfile(profile HcDeviceProfile) (int, error) {
+	query := `INSERT INTO hc_device_profiles (profile_name, manufacturer, model_number, communications_protocol, decoder)
+		VALUES ($1, $2, $3, $4, $5) RETURNING profile_id;`
+	var id int
+	err := p.DB.QueryRow(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder).Scan(&id)
+	return id, err
+}
+
+// GetAllDeviceProfiles retrieves all device profiles.
+func (p *PostgresStorage) GetAllDeviceProfiles() ([]HcDeviceProfile, error) {
+	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder FROM hc_device_profiles ORDER BY profile_id;`
+	rows, err := p.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var profiles []HcDeviceProfile
+	for rows.Next() {
+		var pr HcDeviceProfile
+		if err := rows.Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder); err != nil {
+			return nil, err
+		}
+		profiles = append(profiles, pr)
+	}
+	return profiles, rows.Err()
+}
+
+// GetDeviceProfileByID retrieves a single device profile by its profile_id.
+func (p *PostgresStorage) GetDeviceProfileByID(profileID int) (*HcDeviceProfile, error) {
+	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder FROM hc_device_profiles WHERE profile_id = $1;`
+	var pr HcDeviceProfile
+	err := p.DB.QueryRow(query, profileID).Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder)
+	if err != nil {
+		return nil, err
+	}
+	return &pr, nil
+}
+
+// UpdateDeviceProfile updates an existing device profile.
+func (p *PostgresStorage) UpdateDeviceProfile(profile HcDeviceProfile) error {
+	query := `UPDATE hc_device_profiles SET profile_name=$1, manufacturer=$2, model_number=$3, communications_protocol=$4, decoder=$5 WHERE profile_id=$6;`
+	_, err := p.DB.Exec(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder, profile.ProfileID)
+	return err
+}
+
+// DeleteDeviceProfile removes a device profile by its profile_id.
+func (p *PostgresStorage) DeleteDeviceProfile(profileID int) error {
+	query := `DELETE FROM hc_device_profiles WHERE profile_id = $1;`
+	_, err := p.DB.Exec(query, profileID)
+	return err
 }

@@ -2,21 +2,46 @@ package mqtt
 
 import (
 	"log/slog"
+	"os"
 	"strings"
 
 	ias_pg "ias/automation/db/pg"
 )
 
-// extractDeviceID attempts to extract a device identifier from the MQTT topic.
-// Assumes topic pattern: sensors/{device_id}/... or {prefix}/{device_id}/...
-// Returns nil if no device ID can be inferred.
+// extractDeviceID extracts a device identifier from an MQTT topic by aligning
+// the incoming topic with the subscription topic template from MQTT_TOPIC env var.
+// The template uses {device_id} as a placeholder (e.g. "sensors/{device_id}").
+// Returns nil if the device ID position cannot be inferred or is empty.
 func extractDeviceID(topic string) *string {
-	parts := strings.Split(strings.Trim(topic, "/"), "/")
-	// Try the second segment (index 1) as the device ID, e.g. sensors/{id}/...
-	if len(parts) >= 2 && parts[1] != "" {
-		return &parts[1]
+	subTopic := os.Getenv("MQTT_TOPIC")
+	if subTopic == "" {
+		return nil
 	}
-	return nil
+
+	templateParts := strings.Split(strings.Trim(subTopic, "/"), "/")
+	var deviceIdx int = -1
+	for i, part := range templateParts {
+		if part == "{device_id}" {
+			deviceIdx = i
+			break
+		}
+	}
+
+	if deviceIdx == -1 {
+		return nil
+	}
+
+	parts := strings.Split(strings.Trim(topic, "/"), "/")
+	if len(parts) <= deviceIdx {
+		return nil
+	}
+
+	deviceID := parts[deviceIdx]
+	if deviceID == "" || deviceID == "+" {
+		return nil
+	}
+
+	return &deviceID
 }
 
 // HcDbHandler creates a MessageHandler that stores every incoming MQTT payload

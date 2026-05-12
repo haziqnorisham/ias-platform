@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,6 +52,8 @@ func ConnectAndSubscribe(handler ...MessageHandler) error {
 	}
 
 	topic := os.Getenv("MQTT_TOPIC")
+	topic = strings.ReplaceAll(topic, "{device_id}", "+")
+
 	if topic == "" {
 		return fmt.Errorf("MQTT_TOPIC environment variable is not set")
 	}

@@ -132,4 +132,6 @@ func waitForShutdown() {
 		slog.Info("Shutting down MQTT client", "process", "main")
 		ingest_mqtt.StopClient()
 	}
+
+	slog.Info("Application shut down gracefully", "process", "main")
 }
