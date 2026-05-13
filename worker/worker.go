@@ -15,12 +15,13 @@ import (
 )
 
 type Scheduler struct {
-	cancel       context.CancelFunc
-	workerCount  int
-	batchSize    int
-	pollInterval time.Duration
-	jobs         chan ias_pg.HcRawIngest
-	done         chan struct{}
+	cancel        context.CancelFunc
+	workerCount   int
+	batchSize     int
+	pollInterval  time.Duration
+	processOrder  string
+	jobs          chan ias_pg.HcRawIngest
+	done          chan struct{}
 }
 
 func NewScheduler() *Scheduler {
@@ -30,11 +31,16 @@ func NewScheduler() *Scheduler {
 	if err != nil {
 		pollInterval = 5 * time.Second
 	}
+	processOrder := getEnvOrDefault("WORKER_PROCESS_ORDER", "asc")
+	if processOrder != "asc" {
+		processOrder = "desc"
+	}
 
 	return &Scheduler{
 		workerCount:  workerCount,
 		batchSize:    batchSize,
 		pollInterval: pollInterval,
+		processOrder: processOrder,
 		jobs:         make(chan ias_pg.HcRawIngest, batchSize),
 		done:         make(chan struct{}),
 	}
@@ -82,7 +88,7 @@ func (s *Scheduler) poll(ctx context.Context) {
 
 	dispatch := func() {
 		db := ias_pg.NewPostgresStorage(nil)
-		records, err := db.GetUnprocessedIngestBatch(s.batchSize)
+		records, err := db.GetUnprocessedIngestBatch(s.batchSize, s.processOrder)
 		if err != nil {
 			slog.Error("Failed to fetch unprocessed ingest batch", "error", err, "process", "worker")
 			return

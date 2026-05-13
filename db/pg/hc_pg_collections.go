@@ -305,9 +305,12 @@ func (p *PostgresStorage) DeleteDeviceProfile(profileID int) error {
 }
 
 // GetUnprocessedIngestBatch fetches up to limit unprocessed hc_raw_ingest records
-// ordered by message_id ascending (oldest first).
-func (p *PostgresStorage) GetUnprocessedIngestBatch(limit int) ([]HcRawIngest, error) {
-	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $1 ORDER BY message_id ASC LIMIT $2;`
+// ordered by message_id in the specified direction ("asc" or "desc").
+func (p *PostgresStorage) GetUnprocessedIngestBatch(limit int, order string) ([]HcRawIngest, error) {
+	if order != "asc" {
+		order = "desc"
+	}
+	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $1 ORDER BY message_id ` + order + ` LIMIT $2;`
 	rows, err := p.DB.Query(query, IngestStatusUnprocessed, limit)
 	if err != nil {
 		return nil, err
