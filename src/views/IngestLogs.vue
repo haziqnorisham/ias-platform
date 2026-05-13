@@ -37,7 +37,6 @@ async function onMsgIdClick(event, data) {
     processedLoading[msgID] = true
     try {
         const result = await getProcessedData({ raw_message_id: msgID, limit: 1 })
-        console.log('Processed data for MsgID', msgID, result)
         if (result && result.records && result.records.length > 0) {
             processedDataCache[msgID] = result.records[0]
         } else {
