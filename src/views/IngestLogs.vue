@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -8,7 +8,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 
-import { getRawIngest } from '@/api/posts'
+import { getRawIngest, getProcessedData } from '@/api/posts'
 import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from "primevue/usetoast";
@@ -27,6 +27,30 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const selectedPayload = ref('')
 
+async function onMsgIdClick(event, data) {
+    event.stopPropagation()
+
+    const msgID = data.MessageID
+
+    if (processedLoading[msgID]) return
+
+    processedLoading[msgID] = true
+    try {
+        const result = await getProcessedData({ raw_message_id: msgID, limit: 1 })
+        console.log('Processed data for MsgID', msgID, result)
+        if (result && result.records && result.records.length > 0) {
+            processedDataCache[msgID] = result.records[0]
+        } else {
+            processedDataCache[msgID] = null
+        }
+    } catch (error) {
+        console.error('Failed to fetch processed data:', error)
+        processedDataCache[msgID] = null
+    } finally {
+        processedLoading[msgID] = false
+    }
+}
+
 function openPayloadDialog(payload, event) {
     event.stopPropagation()
     selectedPayload.value = payload
@@ -38,6 +62,9 @@ const total = ref(0)
 const first = ref(0)
 const rows = ref(10)
 const selectedRecords = ref([])
+
+const processedDataCache = reactive({})
+const processedLoading = reactive({})
 
 function onPage(event) {
     first.value = event.first
@@ -122,7 +149,11 @@ onMounted(() => {
 
     <DataTable scrollHeight="flex" :value="records" stripedRows paginator :rows="rows" :rowsPerPageOptions="[5, 10, 20, 50]" :totalRecords="total" :first="first" lazy @page="onPage" tableStyle="min-width: 50rem" dataKey="MessageID" v-model:selection="selectedRecords" selectionMode="multiple">
         <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-        <Column field="MessageID" header="Msg ID"></Column>
+        <Column field="MessageID" header="Msg ID">
+            <template #body="{ data }">
+                <span class="msgid-cell" @click="onMsgIdClick($event, data)">{{ data.MessageID }}</span>
+            </template>
+        </Column>
         <Column field="Topic" header="Topic">
             <template #body="{ data }">
                 <span class="topic-cell">{{ data.Topic }}</span>
@@ -233,6 +264,16 @@ onMounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.msgid-cell {
+    cursor: pointer;
+    transition: color 0.15s, text-decoration 0.15s;
+}
+
+.msgid-cell:hover {
+    color: #90caf9;
+    text-decoration: underline;
 }
 
 .payload-cell {

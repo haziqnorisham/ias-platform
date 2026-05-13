@@ -10,6 +10,7 @@ export const createDeviceProfile = (body) => apiFetch('/api/create_device_profil
 export const updateDeviceProfile = (body) => apiFetch('/api/update_device_profile', { method: 'POST', body: JSON.stringify(body) })
 export const deleteDeviceProfile = (body) => apiFetch('/api/delete_device_profile', { method: 'POST', body: JSON.stringify(body) })
 export const getDeviceProfiles = () => apiFetch('/api/get_device_profiles', { method: 'POST' })
+export const getProcessedData = (body) => apiFetch('/api/get_processed_data', { method: 'POST', body: JSON.stringify(body) })
 export const createDevice = (body) => apiFetch('/api/create_device', { method: 'POST', body: JSON.stringify(body) })
 export const updateDevice = (body) => apiFetch('/api/update_device', { method: 'POST', body: JSON.stringify(body) })
 export const deleteDevice = (body) => apiFetch('/api/delete_device', { method: 'POST', body: JSON.stringify(body) })
