@@ -7,7 +7,7 @@ import (
 )
 
 type HcDevice struct {
-	Id              int     `db:"id"`
+	Id              string  `db:"id"`
 	Name            string  `db:"name"`
 	Description     *string `db:"description"`
 	ProfileID       *int    `db:"profile_id"`
@@ -60,7 +60,7 @@ type HcRawIngest struct {
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS hc_devices (
-			id SERIAL PRIMARY KEY,
+			id VARCHAR(50) PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description TEXT DEFAULT '',
 			profile_id INT REFERENCES hc_device_profiles(profile_id),

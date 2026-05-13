@@ -279,7 +279,7 @@ func UpdateDeviceHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-	if device.Id == 0 {
+	if device.Id == "" {
 		http.Error(w, `{"error":"id is required"}`, http.StatusBadRequest)
 		return
 	}
