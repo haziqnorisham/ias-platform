@@ -3,7 +3,7 @@ import { apiFetch } from './index'
 export const testApi = () => apiFetch('/api/test', {method: 'POST'})
 export const getAllDevices = () => apiFetch('/api/get_all_devices', {method: 'POST'})
 export const getRawIngest = (body) => apiFetch('/api/get_raw_ingest', { method: 'POST', body: JSON.stringify(body) })
-export const reprocessIngest = (body) => apiFetch('/api/reprocess_ingest', { method: 'POST', body: JSON.stringify(body) })
+export const reprocessIngest = (body) => apiFetch('/api/reprocess_raw_ingest', { method: 'POST', body: JSON.stringify(body) })
 export const getPost = (id) => apiFetch(`/posts/${id}`)
 export const createPost = (body) => apiFetch('/posts', { method: 'POST', body: JSON.stringify(body) })
 export const createDeviceProfile = (body) => apiFetch('/api/create_device_profile', { method: 'POST', body: JSON.stringify(body) })

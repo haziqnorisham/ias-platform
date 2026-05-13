@@ -8,7 +8,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 
-import { getRawIngest } from '@/api/posts'
+import { getRawIngest, reprocessIngest } from '@/api/posts'
 import ProcessedDataDialog from '@/components/ingest/ProcessedDataDialog.vue'
 import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -98,20 +98,25 @@ function onRefreshClick() {
     showInfo('Refreshed', 'Ingest logs have been refreshed.')
 }
 
-// Dummy reprocess function — backend API not yet implemented
-function reprocessLogs() {
+async function reprocessLogs() {
     if (!selectedRecords.value.length) {
         showWarn('No Selection', 'Please select at least one record to re-process.')
         return
     }
 
     const msgIDs = selectedRecords.value.map(r => r.MessageID)
-    console.log('[Dummy] Reprocessing MessageIDs:', msgIDs)
-    showInfo(
-        'Reprocessing Triggered',
-        `Selected ${msgIDs.length} record(s): [${msgIDs.join(', ')}]. (Backend API not yet implemented.)`
-    )
-    selectedRecords.value = []
+    loading.value = true
+    try {
+        await reprocessIngest({ message_ids: msgIDs })
+        showInfo('Reprocessed', `Successfully queued ${msgIDs.length} record(s) for re-processing.`)
+        selectedRecords.value = []
+        fetchIngestLogs()
+    } catch (error) {
+        console.error('Reprocess failed:', error)
+        showError('Reprocess Failed', 'Failed to re-process selected records.')
+    } finally {
+        loading.value = false
+    }
 }
 
 onMounted(() => {
