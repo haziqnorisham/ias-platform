@@ -15,13 +15,13 @@ import (
 )
 
 type Scheduler struct {
-	cancel        context.CancelFunc
-	workerCount   int
-	batchSize     int
-	pollInterval  time.Duration
-	processOrder  string
-	jobs          chan ias_pg.HcRawIngest
-	done          chan struct{}
+	cancel       context.CancelFunc
+	workerCount  int
+	batchSize    int
+	pollInterval time.Duration
+	processOrder string
+	jobs         chan ias_pg.HcRawIngest
+	done         chan struct{}
 }
 
 func NewScheduler() *Scheduler {
@@ -126,10 +126,7 @@ func (s *Scheduler) worker(ctx context.Context, id int) {
 	for {
 		select {
 		case record := <-s.jobs:
-			_ = record
-			_ = db
-			println(record.Payload)
-			//processRecord(db, record)
+			processRecord(db, record)
 		case <-ctx.Done():
 			slog.Info("Worker stopped", "worker_id", id, "process", "worker")
 			return
@@ -179,6 +176,10 @@ func processRecord(db *ias_pg.PostgresStorage, raw ias_pg.HcRawIngest) {
 				}
 			}
 		}
+	}
+
+	if processedPayload == "" {
+		processedPayload = "{}"
 	}
 
 	processed := ias_pg.HcProcessedData{
