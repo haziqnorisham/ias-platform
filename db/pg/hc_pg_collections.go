@@ -59,16 +59,6 @@ type HcRawIngest struct {
 
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS hc_devices (
-			id VARCHAR(50) PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
-			description TEXT DEFAULT '',
-			profile_id INT REFERENCES hc_device_profiles(profile_id),
-			status VARCHAR(50) NOT NULL DEFAULT 'active',
-			location_label VARCHAR(255) DEFAULT '',
-			created_date DATE DEFAULT CURRENT_DATE,
-			last_updated_date DATE DEFAULT CURRENT_DATE
-		);`,
 		`CREATE TABLE IF NOT EXISTS hc_raw_ingest (
 			message_id BIGSERIAL PRIMARY KEY,
 			topic VARCHAR(255) NOT NULL,
@@ -85,6 +75,16 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			model_number VARCHAR(100) NOT NULL DEFAULT '',
 			communications_protocol VARCHAR(50) NOT NULL DEFAULT '',
 			decoder TEXT DEFAULT ''
+		);`,
+		`CREATE TABLE IF NOT EXISTS hc_devices (
+			id VARCHAR(50) PRIMARY KEY,
+			name VARCHAR(100) NOT NULL,
+			description TEXT DEFAULT '',
+			profile_id INT REFERENCES hc_device_profiles(profile_id),
+			status VARCHAR(50) NOT NULL DEFAULT 'active',
+			location_label VARCHAR(255) DEFAULT '',
+			created_date DATE DEFAULT CURRENT_DATE,
+			last_updated_date DATE DEFAULT CURRENT_DATE
 		);`,
 		`CREATE TABLE IF NOT EXISTS hc_processed_data (
 			id BIGSERIAL PRIMARY KEY,
