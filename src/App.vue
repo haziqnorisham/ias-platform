@@ -23,6 +23,7 @@ const routeLabelMap = {
   DeviceProfiles: 'Device Profiles',
   IngestLogs: 'Ingest Logs',
   Diagnostics: 'Diagnostics',
+  Settings: 'Settings',
   About: 'About',
 };
 

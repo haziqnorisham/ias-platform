@@ -9,6 +9,7 @@ import Ai from '../views/Ai.vue';
 import Dashboards from '../views/Dashboards.vue';
 import DeviceProfiles from '../views/DeviceProfiles.vue';
 import IngestLogs from '../views/IngestLogs.vue';
+import Settings from '../views/Settings.vue';
 
 const routes = [
   {
@@ -50,6 +51,11 @@ const routes = [
     path: '/ingest-logs',
     name: 'IngestLogs',
     component: IngestLogs
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: Settings
   }
 ];
 
