@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
 
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -8,7 +8,8 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 
-import { getRawIngest, getProcessedData } from '@/api/posts'
+import { getRawIngest } from '@/api/posts'
+import ProcessedDataDialog from '@/components/ingest/ProcessedDataDialog.vue'
 import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from "primevue/usetoast";
@@ -27,27 +28,13 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const selectedPayload = ref('')
 
-async function onMsgIdClick(event, data) {
+const processedDialogVisible = ref(false)
+const selectedRecord = ref(null)
+
+function onMsgIdClick(event, data) {
     event.stopPropagation()
-
-    const msgID = data.MessageID
-
-    if (processedLoading[msgID]) return
-
-    processedLoading[msgID] = true
-    try {
-        const result = await getProcessedData({ raw_message_id: msgID, limit: 1 })
-        if (result && result.records && result.records.length > 0) {
-            processedDataCache[msgID] = result.records[0]
-        } else {
-            processedDataCache[msgID] = null
-        }
-    } catch (error) {
-        console.error('Failed to fetch processed data:', error)
-        processedDataCache[msgID] = null
-    } finally {
-        processedLoading[msgID] = false
-    }
+    selectedRecord.value = data
+    processedDialogVisible.value = true
 }
 
 function openPayloadDialog(payload, event) {
@@ -61,9 +48,6 @@ const total = ref(0)
 const first = ref(0)
 const rows = ref(10)
 const selectedRecords = ref([])
-
-const processedDataCache = reactive({})
-const processedLoading = reactive({})
 
 function onPage(event) {
     first.value = event.first
@@ -186,6 +170,11 @@ onMounted(() => {
             <Button label="Close" icon="pi pi-times" @click="dialogVisible = false" class="p-button-text"/>
         </template>
     </Dialog>
+
+    <ProcessedDataDialog
+        v-model:visible="processedDialogVisible"
+        :record="selectedRecord"
+    />
 
 </template>
 
