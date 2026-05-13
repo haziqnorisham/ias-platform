@@ -9,7 +9,6 @@ import Ai from '../views/Ai.vue';
 import Dashboards from '../views/Dashboards.vue';
 import DeviceProfiles from '../views/DeviceProfiles.vue';
 import IngestLogs from '../views/IngestLogs.vue';
-import GridPlayground from '../views/GridPlayground.vue';
 
 const routes = [
   {
@@ -51,11 +50,6 @@ const routes = [
     path: '/ingest-logs',
     name: 'IngestLogs',
     component: IngestLogs
-  },
-  {
-    path: '/grid-playground',
-    name: 'GridPlayground',
-    component: GridPlayground
   }
 ];
 

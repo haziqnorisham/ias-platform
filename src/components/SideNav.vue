@@ -13,7 +13,6 @@ const navItems = [
   { label: 'Ingest Logs', icon: 'pi pi-chevron-circle-down', to: '/ingest-logs' },
   { label: 'Settings', icon: 'pi pi-cog', to: '/settings' },
   { label: 'Diagnostics', icon: 'pi pi-wave-pulse', to: '/diagnostics' },
-  { label: 'Grid Playground', icon: 'pi pi-th-large', to: '/grid-playground' },
   { label: 'About', icon: 'pi pi-info-circle', to: '/about' },
 
 ]
