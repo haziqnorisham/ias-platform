@@ -65,7 +65,7 @@ function closeDialog() {
 
 function handleSave() {
     const payload = {
-        Id: parseInt(form.value.id),
+        Id: form.value.id,
         Name: form.value.name,
         Description: form.value.description || null,
         LocationLabel: form.value.location_label || null,
@@ -101,7 +101,7 @@ function handleDeleteRequest() {
                 <InputText
                     id="device_id"
                     v-model="form.id"
-                    placeholder="Enter device ID (numeric)"
+                    placeholder="Enter device ID"
                     :disabled="dialogMode === 'edit'"
                     class="form-input"
                 />
