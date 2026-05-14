@@ -14,7 +14,7 @@
     <div class="editor-toolbar">
       <div class="toolbar-section">
         <ButtonGroup>
-          <Button icon="pi pi-chart-bar" label="Chart" size="small" severity="secondary" />
+          <Button icon="pi pi-chart-bar" label="Chart" size="small" severity="secondary" @click="addChart" />
           <Button icon="pi pi-hashtag" label="Metric" size="small" severity="secondary" @click="addMetric" />
           <Button icon="pi pi-table" label="Table" size="small" severity="secondary" />
           <Button icon="pi pi-pen-to-square" label="Text" size="small" severity="secondary" />
@@ -83,6 +83,19 @@ function addMetric() {
   })
 }
 
+function addChart() {
+  const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+  layout.value.push({
+    x: 0,
+    y: maxY,
+    w: 6,
+    h: 4,
+    i: String(nextId++),
+    type: 'barchart',
+    chartTitle: 'Bar Chart'
+  })
+}
+
 function deleteWidget(id) {
   const idx = layout.value.findIndex(item => item.i === id)
   if (idx !== -1) layout.value.splice(idx, 1)
@@ -91,8 +104,9 @@ function deleteWidget(id) {
 function updateWidget(updated) {
   const item = layout.value.find(item => item.i === updated.i)
   if (item) {
-    item.cardTitle = updated.cardTitle
-    item.cardValue = updated.cardValue
+    if (updated.cardTitle !== undefined) item.cardTitle = updated.cardTitle
+    if (updated.cardValue !== undefined) item.cardValue = updated.cardValue
+    if (updated.chartTitle !== undefined) item.chartTitle = updated.chartTitle
   }
 }
 </script>

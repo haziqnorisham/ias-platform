@@ -7,7 +7,7 @@
           :class="{ 'header-title--editing': editing }"
           @dblclick="startEdit"
         >
-          {{ widget.cardTitle || '—' }}
+          {{ widgetTitle }}
         </span>
         <Button
           icon="pi pi-pencil"
@@ -32,7 +32,8 @@
     </div>
 
     <div class="editor-widget-body">
-      <MetricCard :title="widget.cardTitle" :value="widget.cardValue" />
+      <MetricCard v-if="widget.type === 'card'" :title="widget.cardTitle" :value="widget.cardValue" />
+      <BarChartWidget v-else-if="widget.type === 'barchart'" :title="widget.chartTitle" />
     </div>
 
     <Dialog
@@ -48,7 +49,7 @@
           <label for="widgetTitle">Title</label>
           <InputText id="widgetTitle" v-model="draftTitle" placeholder="Widget title" class="form-input" @keydown.enter="saveTitle" />
         </div>
-        <div class="edit-field">
+        <div v-if="widget.type === 'card'" class="edit-field">
           <label for="widgetValue">Value</label>
           <InputText id="widgetValue" v-model="draftValue" placeholder="Widget value" class="form-input" @keydown.enter="saveTitle" />
         </div>
@@ -62,11 +63,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import MetricCard from '../widgets/MetricCard.vue'
+import BarChartWidget from './charts/BarChartWidget.vue'
 
 const props = defineProps({
   widget: {
@@ -81,13 +83,21 @@ const editing = ref(false)
 const draftTitle = ref('')
 const draftValue = ref('')
 
+const widgetTitle = computed(() => {
+  return props.widget.type === 'barchart'
+    ? props.widget.chartTitle
+    : props.widget.cardTitle || '—'
+})
+
 watch(() => props.widget, (w) => {
-  draftTitle.value = w.cardTitle || ''
+  draftTitle.value = w.type === 'barchart' ? (w.chartTitle || '') : (w.cardTitle || '')
   draftValue.value = w.cardValue || ''
 }, { immediate: true })
 
 function startEdit() {
-  draftTitle.value = props.widget.cardTitle || ''
+  draftTitle.value = props.widget.type === 'barchart'
+    ? (props.widget.chartTitle || '')
+    : (props.widget.cardTitle || '')
   draftValue.value = props.widget.cardValue || ''
   editing.value = true
 }
@@ -95,13 +105,16 @@ function startEdit() {
 function saveTitle() {
   const newTitle = draftTitle.value.trim()
   const newValue = draftValue.value.trim()
-  if (newTitle || newValue) {
-    emit('update', {
-      i: props.widget.i,
-      cardTitle: newTitle || props.widget.cardTitle,
-      cardValue: newValue || props.widget.cardValue
-    })
+  const updatePayload = { i: props.widget.i }
+
+  if (props.widget.type === 'barchart') {
+    updatePayload.chartTitle = newTitle || props.widget.chartTitle
+  } else {
+    updatePayload.cardTitle = newTitle || props.widget.cardTitle
+    updatePayload.cardValue = newValue || props.widget.cardValue
   }
+
+  emit('update', updatePayload)
   editing.value = false
 }
 </script>
@@ -191,6 +204,7 @@ function saveTitle() {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  position: relative;
 }
 
 .edit-dialog :deep(.p-dialog-header) {
