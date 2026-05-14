@@ -19,6 +19,7 @@ const routeLabelMap = {
   Home: 'Home',
   Ai: 'IAS AI (Preview)',
   Dashboards: 'Dashboards',
+  DashboardEdit: 'Edit Dashboard',
   Devices: 'Devices',
   DeviceProfiles: 'Device Profiles',
   IngestLogs: 'Ingest Logs',

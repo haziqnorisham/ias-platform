@@ -7,6 +7,7 @@ import Devices from '../views/Devices.vue';
 import Diagnostics from '../views/Diagnostics.vue';
 import Ai from '../views/Ai.vue';
 import Dashboards from '../views/Dashboards.vue';
+import DashboardEdit from '../views/DashboardEdit.vue';
 import DeviceProfiles from '../views/DeviceProfiles.vue';
 import IngestLogs from '../views/IngestLogs.vue';
 import Settings from '../views/Settings.vue';
@@ -41,6 +42,11 @@ const routes = [
     path: '/dashboards',
     name: 'Dashboards',
     component: Dashboards
+  },
+  {
+    path: '/dashboards/edit',
+    name: 'DashboardEdit',
+    component: DashboardEdit
   },
   {
     path: '/device-profiles',
