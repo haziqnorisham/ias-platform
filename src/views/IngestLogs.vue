@@ -49,6 +49,8 @@ const first = ref(0)
 const rows = ref(10)
 const selectedRecords = ref([])
 
+const reprocessing = ref(false)
+
 function onPage(event) {
     first.value = event.first
     rows.value = event.rows
@@ -105,7 +107,7 @@ async function reprocessLogs() {
     }
 
     const msgIDs = selectedRecords.value.map(r => r.MessageID)
-    loading.value = true
+    reprocessing.value = true
     try {
         await reprocessIngest({ message_ids: msgIDs })
         showInfo('Reprocessed', `Successfully queued ${msgIDs.length} record(s) for re-processing.`)
@@ -115,7 +117,7 @@ async function reprocessLogs() {
         console.error('Reprocess failed:', error)
         showError('Reprocess Failed', 'Failed to re-process selected records.')
     } finally {
-        loading.value = false
+        reprocessing.value = false
     }
 }
 
@@ -131,7 +133,7 @@ onMounted(() => {
     <div class="toolbar">
         <div class="toolbar-left">
             <Button label="Refresh" icon="pi pi-refresh" @click="onRefreshClick" />
-            <Button label="Re-Process" icon="pi pi-replay" severity="warn" :disabled="!selectedRecords.length" @click="reprocessLogs" />
+            <Button label="Re-Process" icon="pi pi-replay" severity="warn" :disabled="!selectedRecords.length || reprocessing" :loading="reprocessing" @click="reprocessLogs" />
         </div>
     </div>
 
