@@ -59,7 +59,7 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 		Limit       int    `json:"limit"`
 		Offset      int    `json:"offset"`
 		SortByMsgID string `json:"sort_by_message_id"` // "asc" or "desc"
-		Status      string `json:"status"`             // "processed", "unprocessed", or ""
+		Status      string `json:"status"`             // "processed", "unprocessed", "reprocess", or ""
 	}
 	body := requestBody{
 		Limit:       100,
@@ -83,8 +83,8 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 
 	// Validate status filter (case-insensitive)
 	body.Status = strings.ToLower(body.Status)
-	if body.Status != "" && body.Status != ias_pg.IngestStatusProcessed && body.Status != ias_pg.IngestStatusUnprocessed {
-		http.Error(w, `{"error":"invalid status, must be 'processed' or 'unprocessed'"}`, http.StatusBadRequest)
+	if body.Status != "" && body.Status != ias_pg.IngestStatusProcessed && body.Status != ias_pg.IngestStatusUnprocessed && body.Status != ias_pg.IngestStatusReprocess {
+		http.Error(w, `{"error":"invalid status, must be 'processed', 'unprocessed', or 'reprocess'"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -412,6 +412,146 @@ func DeleteDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonData, _ := json.Marshal(map[string]string{"message": "device profile deleted successfully"})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// GetProcessedData handles POST /api/get_processed_data
+func GetProcessedData(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	type requestBody struct {
+		Limit         int    `json:"limit"`
+		Offset        int    `json:"offset"`
+		SortByID      string `json:"sort_by_id"`
+		Success       *bool  `json:"success"`
+		DeviceID      string `json:"device_id"`
+		RawMessageID  *int64 `json:"raw_message_id"`
+	}
+	body := requestBody{
+		Limit:    100,
+		Offset:   0,
+		SortByID: "desc",
+	}
+
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			slog.Warn("Failed to decode request body, using defaults", "error", err, "process", "hc_handler_main")
+		}
+	}
+
+	body.SortByID = strings.ToLower(body.SortByID)
+	if body.SortByID != "asc" && body.SortByID != "desc" {
+		body.SortByID = "desc"
+	}
+
+	slog.Info("Querying processed data records",
+		"limit", body.Limit,
+		"offset", body.Offset,
+		"sort_by_id", body.SortByID,
+		"success", body.Success,
+		"device_id", body.DeviceID,
+		"raw_message_id", body.RawMessageID,
+		"process", "hc_handler_main",
+	)
+
+	ias_db := ias_pg.NewPostgresStorage(nil)
+
+	records, err := ias_db.QueryProcessedData(body.Limit, body.Offset, body.SortByID, body.Success, body.DeviceID, body.RawMessageID)
+	if err != nil {
+		slog.Error("Failed to query processed data", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to query processed data"}`, http.StatusInternalServerError)
+		return
+	}
+
+	total, err := ias_db.CountProcessedData(body.Success, body.DeviceID, body.RawMessageID)
+	if err != nil {
+		slog.Error("Failed to count processed data records", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to count processed data records"}`, http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("Processed data records retrieved",
+		"count", len(records),
+		"total", total,
+		"process", "hc_handler_main",
+	)
+
+	if records == nil {
+		records = []ias_pg.HcProcessedData{}
+	}
+
+	response := struct {
+		Total   int                     `json:"total"`
+		Records []ias_pg.HcProcessedData `json:"records"`
+	}{
+		Total:   total,
+		Records: records,
+	}
+
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		slog.Error("Failed to marshal response", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to marshal response"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// ReprocessRawIngest handles POST /api/reprocess_raw_ingest
+func ReprocessRawIngest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		MessageIDs []int64 `json:"message_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.MessageIDs) == 0 {
+		http.Error(w, `{"error":"message_ids is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	slog.Info("Reprocessing raw ingest records",
+		"count", len(req.MessageIDs),
+		"message_ids", req.MessageIDs,
+		"process", "hc_handler_main",
+	)
+
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	affected, err := ias_db.BatchUpdateRawIngestStatus(req.MessageIDs, ias_pg.IngestStatusReprocess)
+	if err != nil {
+		slog.Error("Failed to reprocess raw ingest records", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to reprocess raw ingest records"}`, http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("Raw ingest records marked for reprocessing",
+		"affected", affected,
+		"process", "hc_handler_main",
+	)
+
+	response := struct {
+		Affected int64  `json:"affected"`
+		Message  string `json:"message"`
+	}{
+		Affected: affected,
+		Message:  "records marked for reprocessing",
+	}
+
+	jsonData, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)

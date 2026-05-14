@@ -32,6 +32,7 @@ const (
 	IngestStatusUnprocessed = "unprocessed"
 	IngestStatusProcessed   = "processed"
 	IngestStatusError       = "error"
+	IngestStatusReprocess   = "reprocess"
 )
 
 // HcProcessedData represents a processed data record stored in PostgreSQL.
@@ -304,14 +305,14 @@ func (p *PostgresStorage) DeleteDeviceProfile(profileID int) error {
 	return err
 }
 
-// GetUnprocessedIngestBatch fetches up to limit unprocessed hc_raw_ingest records
+// GetUnprocessedIngestBatch fetches up to limit unprocessed or reprocess hc_raw_ingest records
 // ordered by message_id in the specified direction ("asc" or "desc").
 func (p *PostgresStorage) GetUnprocessedIngestBatch(limit int, order string) ([]HcRawIngest, error) {
 	if order != "asc" {
 		order = "desc"
 	}
-	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $1 ORDER BY message_id ` + order + ` LIMIT $2;`
-	rows, err := p.DB.Query(query, IngestStatusUnprocessed, limit)
+	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status IN ($1, $2) ORDER BY message_id ` + order + ` LIMIT $3;`
+	rows, err := p.DB.Query(query, IngestStatusUnprocessed, IngestStatusReprocess, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -340,4 +341,114 @@ func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) error {
 	query := `INSERT INTO hc_processed_data (raw_message_id, device_id, profile_id, processed_payload, success, error_message) VALUES ($1, $2, $3, $4, $5, $6);`
 	_, err := p.DB.Exec(query, data.RawMessageID, data.DeviceID, data.ProfileID, data.ProcessedPayload, data.Success, data.ErrorMessage)
 	return err
+}
+
+// QueryProcessedData retrieves processed data records with pagination and optional filters.
+func (p *PostgresStorage) QueryProcessedData(limit int, offset int, sortByID string, success *bool, deviceID string, rawMessageID *int64) ([]HcProcessedData, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	sortByID = strings.ToLower(sortByID)
+	if sortByID != "asc" {
+		sortByID = "desc"
+	}
+
+	query := `SELECT id, raw_message_id, device_id, profile_id, processed_payload, success, error_message, processed_at FROM hc_processed_data`
+	var conditions []string
+	var args []interface{}
+	argIdx := 1
+
+	if success != nil {
+		conditions = append(conditions, `success = $`+strconv.Itoa(argIdx))
+		args = append(args, *success)
+		argIdx++
+	}
+	if deviceID != "" {
+		conditions = append(conditions, `device_id = $`+strconv.Itoa(argIdx))
+		args = append(args, deviceID)
+		argIdx++
+	}
+	if rawMessageID != nil {
+		conditions = append(conditions, `raw_message_id = $`+strconv.Itoa(argIdx))
+		args = append(args, *rawMessageID)
+		argIdx++
+	}
+
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
+	}
+	query += ` ORDER BY id ` + sortByID + ` LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1) + `;`
+	args = append(args, limit, offset)
+
+	rows, err := p.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []HcProcessedData
+	for rows.Next() {
+		var r HcProcessedData
+		if err := rows.Scan(&r.ID, &r.RawMessageID, &r.DeviceID, &r.ProfileID, &r.ProcessedPayload, &r.Success, &r.ErrorMessage, &r.ProcessedAt); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
+// CountProcessedData returns the total number of processed records matching optional filters.
+func (p *PostgresStorage) CountProcessedData(success *bool, deviceID string, rawMessageID *int64) (int, error) {
+	query := `SELECT COUNT(*) FROM hc_processed_data`
+	var conditions []string
+	var args []interface{}
+	argIdx := 1
+
+	if success != nil {
+		conditions = append(conditions, `success = $`+strconv.Itoa(argIdx))
+		args = append(args, *success)
+		argIdx++
+	}
+	if deviceID != "" {
+		conditions = append(conditions, `device_id = $`+strconv.Itoa(argIdx))
+		args = append(args, deviceID)
+		argIdx++
+	}
+	if rawMessageID != nil {
+		conditions = append(conditions, `raw_message_id = $`+strconv.Itoa(argIdx))
+		args = append(args, *rawMessageID)
+		argIdx++
+	}
+
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
+	}
+
+	var total int
+	if err := p.DB.QueryRow(query, args...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// BatchUpdateRawIngestStatus updates the status of multiple raw ingest records.
+func (p *PostgresStorage) BatchUpdateRawIngestStatus(messageIDs []int64, status string) (int64, error) {
+	if len(messageIDs) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(messageIDs))
+	args := make([]interface{}, len(messageIDs)+1)
+	args[0] = status
+	for i, id := range messageIDs {
+		placeholders[i] = `$` + strconv.Itoa(i+2)
+		args[i+1] = id
+	}
+
+	query := `UPDATE hc_raw_ingest SET status = $1 WHERE message_id IN (` + strings.Join(placeholders, `, `) + `);`
+	result, err := p.DB.Exec(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

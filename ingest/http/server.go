@@ -45,6 +45,12 @@ func SetupRoutes(rdb *redis_lib.Client) {
 		http.HandleFunc("/api/get_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
 			GetRawIngest(w, r)
 		})
+		http.HandleFunc("/api/get_processed_data", func(w http.ResponseWriter, r *http.Request) {
+			GetProcessedData(w, r)
+		})
+		http.HandleFunc("/api/reprocess_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
+			ReprocessRawIngest(w, r)
+		})
 		http.HandleFunc("/api/get_device_profiles", func(w http.ResponseWriter, r *http.Request) {
 			GetDeviceProfiles(w, r)
 		})
