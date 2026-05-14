@@ -5,6 +5,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 
 import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 
@@ -51,6 +52,20 @@ const selectedRecords = ref([])
 
 const reprocessing = ref(false)
 
+const msgIdFilter = ref('')
+
+function applyMsgIdFilter() {
+    first.value = 0
+    pagination.value.offset = 0
+    selectedRecords.value = []
+    fetchIngestLogs()
+}
+
+function clearMsgIdFilter() {
+    msgIdFilter.value = ''
+    applyMsgIdFilter()
+}
+
 function onPage(event) {
     first.value = event.first
     rows.value = event.rows
@@ -71,10 +86,11 @@ async function fetchIngestLogs() {
 
     try {
         const result = await getRawIngest({
-            Limit: pagination.value.limit,
-            Offset: pagination.value.offset,
-            SortByMsgID: pagination.value.sortByMsgID,
-            Status: pagination.value.status
+            limit: pagination.value.limit,
+            offset: pagination.value.offset,
+            sort_by_message_id: pagination.value.sortByMsgID,
+            status: pagination.value.status,
+            message_id: msgIdFilter.value ? Number(msgIdFilter.value) : undefined
         })
         if (result && result.records) {
             records.value = result.records
@@ -135,6 +151,10 @@ onMounted(() => {
             <Button label="Refresh" icon="pi pi-refresh" @click="onRefreshClick" />
             <Button label="Re-Process" icon="pi pi-replay" severity="warn" :disabled="!selectedRecords.length || reprocessing" :loading="reprocessing" @click="reprocessLogs" />
         </div>
+        <div class="toolbar-right">
+            <InputText v-model="msgIdFilter" placeholder="Filter by Msg ID" size="small" class="filter-input" @keydown.enter="applyMsgIdFilter" />
+            <Button v-if="msgIdFilter" icon="pi pi-times" severity="secondary" text rounded size="small" @click="clearMsgIdFilter" />
+        </div>
     </div>
 
     <DataTable scrollHeight="flex" :value="records" stripedRows paginator :rows="rows" :rowsPerPageOptions="[5, 10, 20, 50]" :totalRecords="total" :first="first" lazy @page="onPage" tableStyle="min-width: 50rem" dataKey="MessageID" v-model:selection="selectedRecords" selectionMode="multiple">
@@ -191,12 +211,23 @@ onMounted(() => {
 .toolbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 1rem;
 }
 
 .toolbar-left {
     display: flex;
     gap: 0.5rem;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.filter-input {
+    width: 220px;
 }
 
 .device_card {
