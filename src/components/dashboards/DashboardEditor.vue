@@ -14,10 +14,10 @@
     <div class="editor-toolbar">
       <div class="toolbar-section">
         <ButtonGroup>
-          <Button icon="pi pi-chart-bar" label="Chart" size="small" severity="secondary" @click="addChart" />
+          <Button icon="pi pi-chart-bar" label="Bar Chart" size="small" severity="secondary" @click="addChart" />
           <Button icon="pi pi-hashtag" label="Metric" size="small" severity="secondary" @click="addMetric" />
-          <Button icon="pi pi-table" label="Table" size="small" severity="secondary" />
-          <Button icon="pi pi-pen-to-square" label="Text" size="small" severity="secondary" />
+          <Button icon="pi pi-table" label="Table" size="small" severity="secondary" @click="addTable" />
+          <Button icon="pi pi-pen-to-square" label="Text" size="small" severity="secondary" @click="addText" />
         </ButtonGroup>
       </div>
     </div>
@@ -92,7 +92,34 @@ function addChart() {
     h: 4,
     i: String(nextId++),
     type: 'barchart',
-    chartTitle: 'Bar Chart'
+    chartTitle: 'New Bar Chart'
+  })
+}
+
+function addTable() {
+  const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+  layout.value.push({
+    x: 0,
+    y: maxY,
+    w: 6,
+    h: 4,
+    i: String(nextId++),
+    type: 'table',
+    tableTitle: 'New Table'
+  })
+}
+
+function addText() {
+  const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+  layout.value.push({
+    x: 0,
+    y: maxY,
+    w: 4,
+    h: 2,
+    i: String(nextId++),
+    type: 'text',
+    textTitle: 'New Text',
+    textContent: 'Double-click to edit this text.'
   })
 }
 
@@ -107,6 +134,9 @@ function updateWidget(updated) {
     if (updated.cardTitle !== undefined) item.cardTitle = updated.cardTitle
     if (updated.cardValue !== undefined) item.cardValue = updated.cardValue
     if (updated.chartTitle !== undefined) item.chartTitle = updated.chartTitle
+    if (updated.tableTitle !== undefined) item.tableTitle = updated.tableTitle
+    if (updated.textTitle !== undefined) item.textTitle = updated.textTitle
+    if (updated.textContent !== undefined) item.textContent = updated.textContent
   }
 }
 </script>

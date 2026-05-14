@@ -34,6 +34,8 @@
     <div class="editor-widget-body">
       <MetricCard v-if="widget.type === 'card'" :title="widget.cardTitle" :value="widget.cardValue" />
       <BarChartWidget v-else-if="widget.type === 'barchart'" :title="widget.chartTitle" />
+      <TableWidget v-else-if="widget.type === 'table'" :title="widget.tableTitle" />
+      <TextWidget v-else-if="widget.type === 'text'" :title="widget.textTitle" :text="widget.textContent" />
     </div>
 
     <Dialog
@@ -53,6 +55,10 @@
           <label for="widgetValue">Value</label>
           <InputText id="widgetValue" v-model="draftValue" placeholder="Widget value" class="form-input" @keydown.enter="saveTitle" />
         </div>
+        <div v-if="widget.type === 'text'" class="edit-field">
+          <label for="widgetValue">Content</label>
+          <InputText id="widgetValue" v-model="draftValue" placeholder="Text content" class="form-input" @keydown.enter="saveTitle" />
+        </div>
       </div>
       <template #footer>
         <Button label="Cancel" icon="pi pi-times" @click="editing = false" class="p-button-text" />
@@ -69,6 +75,8 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import MetricCard from '../widgets/MetricCard.vue'
 import BarChartWidget from './charts/BarChartWidget.vue'
+import TableWidget from './charts/TableWidget.vue'
+import TextWidget from './charts/TextWidget.vue'
 
 const props = defineProps({
   widget: {
@@ -84,21 +92,53 @@ const draftTitle = ref('')
 const draftValue = ref('')
 
 const widgetTitle = computed(() => {
-  return props.widget.type === 'barchart'
-    ? props.widget.chartTitle
-    : props.widget.cardTitle || '—'
+  switch (props.widget.type) {
+    case 'barchart': return props.widget.chartTitle
+    case 'table': return props.widget.tableTitle
+    case 'text': return props.widget.textTitle
+    default: return props.widget.cardTitle || '—'
+  }
 })
 
 watch(() => props.widget, (w) => {
-  draftTitle.value = w.type === 'barchart' ? (w.chartTitle || '') : (w.cardTitle || '')
-  draftValue.value = w.cardValue || ''
+  switch (w.type) {
+    case 'barchart':
+      draftTitle.value = w.chartTitle || ''
+      draftValue.value = ''
+      break
+    case 'table':
+      draftTitle.value = w.tableTitle || ''
+      draftValue.value = ''
+      break
+    case 'text':
+      draftTitle.value = w.textTitle || ''
+      draftValue.value = w.textContent || ''
+      break
+    default:
+      draftTitle.value = w.cardTitle || ''
+      draftValue.value = w.cardValue || ''
+  }
 }, { immediate: true })
 
 function startEdit() {
-  draftTitle.value = props.widget.type === 'barchart'
-    ? (props.widget.chartTitle || '')
-    : (props.widget.cardTitle || '')
-  draftValue.value = props.widget.cardValue || ''
+  const w = props.widget
+  switch (w.type) {
+    case 'barchart':
+      draftTitle.value = w.chartTitle || ''
+      draftValue.value = ''
+      break
+    case 'table':
+      draftTitle.value = w.tableTitle || ''
+      draftValue.value = ''
+      break
+    case 'text':
+      draftTitle.value = w.textTitle || ''
+      draftValue.value = w.textContent || ''
+      break
+    default:
+      draftTitle.value = w.cardTitle || ''
+      draftValue.value = w.cardValue || ''
+  }
   editing.value = true
 }
 
@@ -107,14 +147,26 @@ function saveTitle() {
   const newValue = draftValue.value.trim()
   const updatePayload = { i: props.widget.i }
 
-  if (props.widget.type === 'barchart') {
-    updatePayload.chartTitle = newTitle || props.widget.chartTitle
-  } else {
-    updatePayload.cardTitle = newTitle || props.widget.cardTitle
-    updatePayload.cardValue = newValue || props.widget.cardValue
+  switch (props.widget.type) {
+    case 'barchart':
+      if (newTitle) updatePayload.chartTitle = newTitle
+      break
+    case 'table':
+      if (newTitle) updatePayload.tableTitle = newTitle
+      break
+    case 'text':
+      updatePayload.textTitle = newTitle || props.widget.textTitle
+      updatePayload.textContent = newValue || props.widget.textContent
+      break
+    default:
+      updatePayload.cardTitle = newTitle || props.widget.cardTitle
+      updatePayload.cardValue = newValue || props.widget.cardValue
+      break
   }
 
-  emit('update', updatePayload)
+  if (Object.keys(updatePayload).length > 1) {
+    emit('update', updatePayload)
+  }
   editing.value = false
 }
 </script>
