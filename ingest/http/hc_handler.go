@@ -60,6 +60,7 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 		Offset      int    `json:"offset"`
 		SortByMsgID string `json:"sort_by_message_id"` // "asc" or "desc"
 		Status      string `json:"status"`             // "processed", "unprocessed", "reprocess", or ""
+		MessageID   *int64 `json:"message_id"`         // optional, filter by specific message_id
 	}
 	body := requestBody{
 		Limit:       100,
@@ -93,12 +94,13 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 		"offset", body.Offset,
 		"sort_by_message_id", body.SortByMsgID,
 		"status", body.Status,
+		"message_id", body.MessageID,
 		"process", "hc_handler_main",
 	)
 
 	ias_db := ias_pg.NewPostgresStorage(nil)
 
-	records, err := ias_db.QueryRawIngest(body.Limit, body.Offset, body.SortByMsgID, body.Status)
+	records, err := ias_db.QueryRawIngest(body.Limit, body.Offset, body.SortByMsgID, body.Status, body.MessageID)
 	if err != nil {
 		slog.Error("Failed to query raw ingest", "error", err, "process", "hc_handler_main")
 		http.Error(w, `{"error":"failed to query raw ingest"}`, http.StatusInternalServerError)
@@ -106,7 +108,7 @@ func GetRawIngest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get total count of matching records (ignoring pagination)
-	total, err := ias_db.CountRawIngest(body.Status)
+	total, err := ias_db.CountRawIngest(body.Status, body.MessageID)
 	if err != nil {
 		slog.Error("Failed to count raw ingest records", "error", err, "process", "hc_handler_main")
 		http.Error(w, `{"error":"failed to count raw ingest records"}`, http.StatusInternalServerError)

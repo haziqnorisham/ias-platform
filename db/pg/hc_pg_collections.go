@@ -114,33 +114,43 @@ func (p *PostgresStorage) InsertRawIngest(topic string, payload []byte, deviceID
 	return err
 }
 
-// QueryRawIngest retrieves raw ingest records with pagination, optional status filter, and sort order.
+// QueryRawIngest retrieves raw ingest records with pagination, optional status filter, optional message_id filter, and sort order.
 // Parameters:
 //   - limit: max records to return (default 100)
 //   - offset: number of records to skip (for pagination)
 //   - sortByMsgID: "asc" or "desc" ordering by message_id (default "desc")
-//   - status: "" for all, or "processed"/"unprocessed" to filter
-func (p *PostgresStorage) QueryRawIngest(limit int, offset int, sortByMsgID string, status string) ([]HcRawIngest, error) {
+//   - status: "" for all, or "processed"/"unprocessed"/"reprocess" to filter
+//   - messageID: nil for all, or a specific message_id to filter
+func (p *PostgresStorage) QueryRawIngest(limit int, offset int, sortByMsgID string, status string, messageID *int64) ([]HcRawIngest, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	// Normalise sort direction to lowercase for case-insensitive matching
 	sortByMsgID = strings.ToLower(sortByMsgID)
 	if sortByMsgID != "asc" {
 		sortByMsgID = "desc"
 	}
 
-	var query string
+	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest`
+	var conditions []string
 	var args []interface{}
 	argIdx := 1
 
 	if status != "" {
-		query = `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest WHERE status = $` + strconv.Itoa(argIdx) + ` ORDER BY message_id ` + sortByMsgID + ` LIMIT $` + strconv.Itoa(argIdx+1) + ` OFFSET $` + strconv.Itoa(argIdx+2) + `;`
-		args = append(args, status, limit, offset)
-	} else {
-		query = `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at FROM hc_raw_ingest ORDER BY message_id ` + sortByMsgID + ` LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1) + `;`
-		args = append(args, limit, offset)
+		conditions = append(conditions, `status = $`+strconv.Itoa(argIdx))
+		args = append(args, status)
+		argIdx++
 	}
+	if messageID != nil {
+		conditions = append(conditions, `message_id = $`+strconv.Itoa(argIdx))
+		args = append(args, *messageID)
+		argIdx++
+	}
+
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
+	}
+	query += ` ORDER BY message_id ` + sortByMsgID + ` LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1) + `;`
+	args = append(args, limit, offset)
 
 	rows, err := p.DB.Query(query, args...)
 	if err != nil {
@@ -159,15 +169,26 @@ func (p *PostgresStorage) QueryRawIngest(limit int, offset int, sortByMsgID stri
 	return records, rows.Err()
 }
 
-// CountRawIngest returns the total number of records matching the optional status filter.
-func (p *PostgresStorage) CountRawIngest(status string) (int, error) {
-	var query string
+// CountRawIngest returns the total number of records matching the optional filters.
+func (p *PostgresStorage) CountRawIngest(status string, messageID *int64) (int, error) {
+	query := `SELECT COUNT(*) FROM hc_raw_ingest`
+	var conditions []string
 	var args []interface{}
+	argIdx := 1
+
 	if status != "" {
-		query = `SELECT COUNT(*) FROM hc_raw_ingest WHERE status = $1;`
+		conditions = append(conditions, `status = $`+strconv.Itoa(argIdx))
 		args = append(args, status)
-	} else {
-		query = `SELECT COUNT(*) FROM hc_raw_ingest;`
+		argIdx++
+	}
+	if messageID != nil {
+		conditions = append(conditions, `message_id = $`+strconv.Itoa(argIdx))
+		args = append(args, *messageID)
+		argIdx++
+	}
+
+	if len(conditions) > 0 {
+		query += ` WHERE ` + strings.Join(conditions, ` AND `)
 	}
 
 	var total int
