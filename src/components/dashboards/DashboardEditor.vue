@@ -43,12 +43,7 @@
           :i="item.i"
           class="grid-item"
         >
-          <WidgetWrapper :title="getWidgetTitle(item)">
-            <MetricCard v-if="item.type === 'card'" :title="item.cardTitle" :value="item.cardValue" />
-            <div v-else-if="item.type === 'statictext'" class="static-text-widget">
-              {{ item.text }}
-            </div>
-          </WidgetWrapper>
+          <EditorWidget :widget="item" @delete="deleteWidget" @update="updateWidget" />
         </GridItem>
       </GridLayout>
 
@@ -66,8 +61,7 @@ import { GridLayout, GridItem } from 'vue3-grid-layout'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
-import WidgetWrapper from '../widgets/WidgetWrapper.vue'
-import MetricCard from '../widgets/MetricCard.vue'
+import EditorWidget from './EditorWidget.vue'
 
 const layout = ref([
   { x: 0, y: 0, w: 4, h: 2, i: '0', type: 'card', cardTitle: 'Starter Metric', cardValue: '—' }
@@ -89,8 +83,17 @@ function addMetric() {
   })
 }
 
-function getWidgetTitle(item) {
-  return item.type === 'card' ? item.cardTitle : ''
+function deleteWidget(id) {
+  const idx = layout.value.findIndex(item => item.i === id)
+  if (idx !== -1) layout.value.splice(idx, 1)
+}
+
+function updateWidget(updated) {
+  const item = layout.value.find(item => item.i === updated.i)
+  if (item) {
+    item.cardTitle = updated.cardTitle
+    item.cardValue = updated.cardValue
+  }
 }
 </script>
 
@@ -199,17 +202,5 @@ function getWidgetTitle(item) {
   color: #444;
   font-size: 0.9rem;
   margin: 0;
-}
-
-.static-text-widget {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #ccc;
-  letter-spacing: 0.05em;
-  user-select: none;
 }
 </style>
