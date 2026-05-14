@@ -5,6 +5,7 @@ import (
 	ias_pg "ias/automation/db/pg"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -554,6 +555,55 @@ func ReprocessRawIngest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonData, _ := json.Marshal(response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// GetServerConfig handles POST /api/get_server_config
+func GetServerConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	slog.Info("Retrieving server configuration", "process", "hc_handler_main")
+
+	data, err := os.ReadFile(".env")
+	if err != nil {
+		slog.Error("Failed to read .env file", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to read configuration"}`, http.StatusInternalServerError)
+		return
+	}
+
+	config := make(map[string]string)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		idx := strings.Index(line, "=")
+		if idx == -1 {
+			continue
+		}
+		key := strings.TrimSpace(line[:idx])
+		val := strings.TrimSpace(line[idx+1:])
+		val = strings.Trim(val, `"'`)
+
+		upper := strings.ToUpper(key)
+		if strings.Contains(upper, "PASSWORD") || strings.Contains(upper, "TOKEN") || strings.Contains(upper, "SECRET") {
+			val = "***"
+		}
+		config[key] = val
+	}
+
+	jsonData, err := json.Marshal(config)
+	if err != nil {
+		slog.Error("Failed to marshal server config", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to marshal configuration"}`, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
