@@ -137,6 +137,7 @@ function updateWidget(updated) {
     if (updated.tableTitle !== undefined) item.tableTitle = updated.tableTitle
     if (updated.textTitle !== undefined) item.textTitle = updated.textTitle
     if (updated.textContent !== undefined) item.textContent = updated.textContent
+    if (updated.config !== undefined) item.config = updated.config
   }
 }
 </script>

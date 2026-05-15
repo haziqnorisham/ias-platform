@@ -60,6 +60,33 @@
           <InputText id="widgetValue" v-model="draftValue" placeholder="Text content" class="form-input" @keydown.enter="saveTitle" />
         </div>
       </div>
+
+      <template v-if="widget.type === 'card'">
+        <hr class="edit-divider" />
+        <div class="edit-section-label">Data Source</div>
+
+        <div class="toggle-row">
+          <ToggleSwitch v-model="dynamicDataEnabled" />
+          <span class="toggle-label">Dynamic Data</span>
+        </div>
+
+        <div v-if="dynamicDataEnabled" class="query-grid">
+          <div class="edit-field">
+            <label>Device</label>
+            <Select v-model="queryDeviceId" :options="deviceOptions" optionLabel="label" optionValue="value" placeholder="Select device" size="small" class="form-input" />
+          </div>
+
+          <div v-if="showMetricKey" class="edit-field">
+            <label>Metric key</label>
+            <InputText v-model="queryMetricKey" placeholder="temperature" size="small" class="form-input" />
+          </div>
+
+          <div class="edit-field">
+            <label>Aggregate</label>
+            <Select v-model="queryAggregate" :options="aggregateOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
+          </div>
+        </div>
+      </template>
       <template #footer>
         <Button label="Cancel" icon="pi pi-times" @click="editing = false" class="p-button-text" />
         <Button label="Save" icon="pi pi-check" @click="saveTitle" />
@@ -73,10 +100,13 @@ import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
+import ToggleSwitch from 'primevue/toggleswitch'
 import MetricCard from '../widgets/MetricCard.vue'
 import BarChartWidget from './charts/BarChartWidget.vue'
 import TableWidget from './charts/TableWidget.vue'
 import TextWidget from './charts/TextWidget.vue'
+import { getAllDevices } from '@/api/posts'
 
 const props = defineProps({
   widget: {
@@ -90,6 +120,24 @@ const emit = defineEmits(['delete', 'update'])
 const editing = ref(false)
 const draftTitle = ref('')
 const draftValue = ref('')
+
+const dynamicDataEnabled = ref(false)
+const queryDeviceId = ref('')
+const queryMetricKey = ref('')
+const queryAggregate = ref('avg')
+const deviceOptions = ref([])
+
+const showMetricKey = computed(() => queryAggregate.value !== 'count')
+
+const aggregateOptions = [
+  { label: 'Count', value: 'count' },
+  { label: 'Sum', value: 'sum' },
+  { label: 'Average', value: 'avg' },
+  { label: 'Min', value: 'min' },
+  { label: 'Max', value: 'max' },
+  { label: 'First', value: 'first' },
+  { label: 'Last', value: 'last' }
+]
 
 const widgetTitle = computed(() => {
   switch (props.widget.type) {
@@ -139,6 +187,29 @@ function startEdit() {
       draftTitle.value = w.cardTitle || ''
       draftValue.value = w.cardValue || ''
   }
+
+  if (w.type === 'card') {
+    getAllDevices().then(result => {
+      deviceOptions.value = (result || []).map(d => ({
+        label: `${d.Name || d.Id} (${d.Id})`,
+        value: String(d.Id)
+      }))
+    }).catch(() => { deviceOptions.value = [] })
+
+    const q = w.config?.query
+    if (q) {
+      dynamicDataEnabled.value = true
+      queryDeviceId.value = q.device_id || ''
+      queryMetricKey.value = q.metric_key || ''
+      queryAggregate.value = q.aggregate || 'avg'
+    } else {
+      dynamicDataEnabled.value = false
+      queryDeviceId.value = ''
+      queryMetricKey.value = ''
+      queryAggregate.value = 'avg'
+    }
+  }
+
   editing.value = true
 }
 
@@ -162,6 +233,18 @@ function saveTitle() {
       updatePayload.cardTitle = newTitle || props.widget.cardTitle
       updatePayload.cardValue = newValue || props.widget.cardValue
       break
+  }
+
+  if (props.widget.type === 'card' && dynamicDataEnabled.value && queryDeviceId.value) {
+    updatePayload.config = {
+      query: {
+        device_id: queryDeviceId.value,
+        aggregate: queryAggregate.value
+      }
+    }
+    if (queryAggregate.value !== 'count') {
+      updatePayload.config.query.metric_key = queryMetricKey.value.trim()
+    }
   }
 
   if (Object.keys(updatePayload).length > 1) {
@@ -288,5 +371,36 @@ function saveTitle() {
 
 .form-input {
   width: 100%;
+}
+
+.edit-divider {
+  border: none;
+  border-top: 1px solid #212121;
+  margin: 1.25rem 0 0.75rem 0;
+}
+
+.edit-section-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #a0a0a0;
+  margin-bottom: 0.75rem;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.toggle-label {
+  font-size: 0.82rem;
+  color: #ccc;
+}
+
+.query-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 </style>
