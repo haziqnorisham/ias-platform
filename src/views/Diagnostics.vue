@@ -7,26 +7,6 @@
         <Button label="Run Test" icon="pi pi-play" class="btn" @click="runBackendLinkTest"/>
       </div>
     </Panel>
-    <Panel title="DB Integrity Test" subtitle="Check is all tables are present & have correct schema." >
-      <div class="centered">
-        <Button label="Run Test" icon="pi pi-play" class="btn" @click="showTestModal('DB Integrity Test')"/>
-      </div>
-    </Panel>
-    <Panel title="Cache Integrity Test" subtitle="Check is all tables are present & have correct schema." >
-      <div class="centered">
-        <Button label="Run Test" icon="pi pi-play" class="btn" @click="showTestModal('Cache Integrity Test')"/>
-      </div>
-    </Panel>
-    <Panel title="Cache Integrity Test" subtitle="Check is all tables are present & have correct schema." >
-      <div class="centered">
-        <Button label="Run Test" icon="pi pi-play" class="btn" @click="showTestModal('Cache Integrity Test')"/>
-      </div>
-    </Panel>
-    <Panel title="Chirpstack Integration Test" subtitle="Check is all tables are present & have correct schema." >
-      <div class="centered">
-        <Button label="Run Test" icon="pi pi-play" class="btn" @click="showTestModal('Chirpstack Integration Test')"/>
-      </div>
-    </Panel>
   </div>
 
   <!-- PrimeVue Dialog Modal -->

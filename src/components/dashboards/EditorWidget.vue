@@ -51,7 +51,7 @@
           <label for="widgetTitle">Title</label>
           <InputText id="widgetTitle" v-model="draftTitle" placeholder="Widget title" class="form-input" @keydown.enter="saveTitle" />
         </div>
-        <div v-if="widget.type === 'card'" class="edit-field">
+        <div v-if="widget.type === 'card' && !dynamicDataEnabled" class="edit-field">
           <label for="widgetValue">Value</label>
           <InputText id="widgetValue" v-model="draftValue" placeholder="Widget value" class="form-input" @keydown.enter="saveTitle" />
         </div>
@@ -106,12 +106,15 @@ import MetricCard from '../widgets/MetricCard.vue'
 import BarChartWidget from './charts/BarChartWidget.vue'
 import TableWidget from './charts/TableWidget.vue'
 import TextWidget from './charts/TextWidget.vue'
-import { getAllDevices } from '@/api/posts'
 
 const props = defineProps({
   widget: {
     type: Object,
     required: true
+  },
+  devices: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -189,12 +192,7 @@ function startEdit() {
   }
 
   if (w.type === 'card') {
-    getAllDevices().then(result => {
-      deviceOptions.value = (result || []).map(d => ({
-        label: `${d.Name || d.Id} (${d.Id})`,
-        value: String(d.Id)
-      }))
-    }).catch(() => { deviceOptions.value = [] })
+    deviceOptions.value = props.devices
 
     const q = w.config?.query
     if (q) {

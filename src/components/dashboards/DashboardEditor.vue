@@ -43,7 +43,7 @@
           :i="item.i"
           class="grid-item"
         >
-          <EditorWidget :widget="item" @delete="deleteWidget" @update="updateWidget" />
+          <EditorWidget :widget="item" :devices="deviceOptions" @delete="deleteWidget" @update="updateWidget" />
         </GridItem>
       </GridLayout>
 
@@ -56,12 +56,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
 import EditorWidget from './EditorWidget.vue'
+import { getAllDevices } from '@/api/posts'
+
+const deviceOptions = ref([])
+
+onMounted(() => {
+  getAllDevices().then(result => {
+    deviceOptions.value = (result || []).map(d => ({
+      label: `${d.Name || d.Id} (${d.Id})`,
+      value: String(d.Id)
+    }))
+  }).catch(() => { deviceOptions.value = [] })
+})
 
 const layout = ref([
   { x: 0, y: 0, w: 4, h: 2, i: '0', type: 'card', cardTitle: 'Starter Metric', cardValue: '—' }
