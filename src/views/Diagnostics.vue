@@ -7,6 +7,11 @@
         <Button label="Run Test" icon="pi pi-play" class="btn" @click="runBackendLinkTest"/>
       </div>
     </Panel>
+    <Panel title="ONVIF Camera Test" subtitle="Verify connectivity to an ONVIF-compatible CCTV camera.">
+      <div class="centered">
+        <Button label="Run Test" icon="pi pi-play" class="btn" @click="runOnvifTest"/>
+      </div>
+    </Panel>
   </div>
 
   <!-- PrimeVue Dialog Modal -->
@@ -93,6 +98,36 @@ async function runBackendLinkTest() {
       false, 
       `Error: ${error.message || 'Failed to connect to backend'}`, 
       error.stack || JSON.stringify(error, null, 2)
+    )
+  } finally {
+    loading.value = false
+  }
+}
+
+async function runOnvifTest() {
+  loading.value = true
+  try {
+    await new Promise(r => setTimeout(r, 1500))
+    showTestModal(
+      'ONVIF Camera Test',
+      true,
+      'Camera connection simulated successfully.',
+      JSON.stringify({
+        status: 'OK',
+        message: 'Dummy test — backend not yet implemented.',
+        camera: {
+          manufacturer: 'Generic ONVIF',
+          model: 'IP Camera',
+          firmware: 'v2.0.0',
+          profiles: ['Profile S', 'Profile T']
+        }
+      }, null, 2)
+    )
+  } catch (error) {
+    showTestModal(
+      'ONVIF Camera Test',
+      false,
+      `Error: ${error.message || 'Test failed'}`
     )
   } finally {
     loading.value = false
