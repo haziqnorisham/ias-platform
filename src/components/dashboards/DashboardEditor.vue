@@ -3,11 +3,20 @@
     <div class="editor-header">
       <div class="header-left">
         <i class="pi pi-palette header-icon"></i>
-        <InputText placeholder="Untitled Dashboard" size="small" class="dashboard-name" />
+        <InputText v-model="dashboardName" placeholder="Untitled Dashboard" size="small" class="dashboard-name" />
       </div>
       <div class="header-right">
-        <Button label="Cancel" icon="pi pi-times" severity="secondary" text size="small" />
-        <Button label="Save Dashboard" icon="pi pi-save" size="small" />
+        <Button
+          v-if="dashboardId"
+          label="Delete"
+          icon="pi pi-trash"
+          severity="danger"
+          text
+          size="small"
+          @click="handleDelete"
+        />
+        <Button label="Cancel" icon="pi pi-times" severity="secondary" text size="small" @click="handleCancel" />
+        <Button label="Save Dashboard" icon="pi pi-save" size="small" :loading="saving" @click="handleSave" />
       </div>
     </div>
 
@@ -57,29 +66,66 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
+import { useToast } from 'primevue/usetoast'
 import EditorWidget from './EditorWidget.vue'
-import { getAllDevices } from '@/api/posts'
+import { getAllDevices, saveDashboard, getDashboard, deleteDashboard } from '@/api/posts'
+
+const router = useRouter()
+const route = useRoute()
+const toast = useToast()
+const saving = ref(false)
+
+const dashboardId = ref(null)
+const dashboardName = ref('')
 
 const deviceOptions = ref([])
 
-onMounted(() => {
+const layout = ref([])
+
+let nextId = 1
+
+function computeNextId() {
+  const ids = layout.value.map(item => parseInt(item.i, 10)).filter(n => !isNaN(n))
+  nextId = ids.length ? Math.max(...ids) + 1 : 1
+}
+
+onMounted(async () => {
   getAllDevices().then(result => {
     deviceOptions.value = (result || []).map(d => ({
       label: `${d.Name || d.Id} (${d.Id})`,
       value: String(d.Id)
     }))
   }).catch(() => { deviceOptions.value = [] })
+
+  const idParam = route.query.id
+  if (idParam) {
+    try {
+      const data = await getDashboard({ id: parseInt(idParam) })
+      console.log(data)
+      if (data && data.layout_json) {
+        dashboardId.value = data.id
+        dashboardName.value = data.name || ''
+        const parsed = JSON.parse(data.layout_json)
+        layout.value = Array.isArray(parsed) ? parsed : []
+        computeNextId()
+        return
+      }
+    } catch (e) {
+      console.error('Failed to load dashboard:', e)
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load dashboard.', life: 3000 })
+    }
+  }
+
+  layout.value = [
+    { x: 0, y: 0, w: 4, h: 2, i: '0', type: 'card', cardTitle: 'Starter Metric', cardValue: '—' }
+  ]
+  computeNextId()
 })
-
-const layout = ref([
-  { x: 0, y: 0, w: 4, h: 2, i: '0', type: 'card', cardTitle: 'Starter Metric', cardValue: '—' }
-])
-
-let nextId = 1
 
 function addMetric() {
   const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
@@ -150,6 +196,46 @@ function updateWidget(updated) {
     if (updated.textTitle !== undefined) item.textTitle = updated.textTitle
     if (updated.textContent !== undefined) item.textContent = updated.textContent
     if (updated.config !== undefined) item.config = updated.config
+  }
+}
+
+async function handleSave() {
+  saving.value = true
+  try {
+    const payload = {
+      name: dashboardName.value.trim() || 'Untitled Dashboard',
+      layoutJSON: JSON.stringify(layout.value)
+    }
+    if (dashboardId.value) {
+      payload.id = dashboardId.value
+    }
+    const result = await saveDashboard(payload)
+    dashboardId.value = result.id
+    toast.add({ severity: 'success', summary: 'Saved', detail: 'Dashboard saved successfully.', life: 3000 })
+  } catch (e) {
+    console.error('Failed to save dashboard:', e)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to save dashboard.', life: 3000 })
+  } finally {
+    saving.value = false
+  }
+}
+
+function handleCancel() {
+  router.push('/dashboards')
+}
+
+async function handleDelete() {
+  if (!dashboardId.value) return
+  saving.value = true
+  try {
+    await deleteDashboard({ id: parseInt/(dashboardId.value) })
+    toast.add({ severity: 'success', summary: 'Deleted', detail: 'Dashboard deleted.', life: 3000 })
+    router.push('/dashboards')
+  } catch (e) {
+    console.error('Failed to delete dashboard:', e)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete dashboard.', life: 3000 })
+  } finally {
+    saving.value = false
   }
 }
 </script>

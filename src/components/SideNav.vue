@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Device Profiles', icon: 'pi pi-wrench', to: '/device-profiles' },
   { label: 'Ingest Logs', icon: 'pi pi-chevron-circle-down', to: '/ingest-logs' },
   { label: 'Settings', icon: 'pi pi-cog', to: '/settings' },
+  { label: 'Integrations', icon: 'pi pi-bolt', to: '/integrations' },
   { label: 'Diagnostics', icon: 'pi pi-wave-pulse', to: '/diagnostics' },
   { label: 'About', icon: 'pi pi-info-circle', to: '/about' },
 

@@ -7,7 +7,7 @@
         <Button label="Run Test" icon="pi pi-play" class="btn" @click="runBackendLinkTest"/>
       </div>
     </Panel>
-    <Panel title="ONVIF Camera Test" subtitle="Verify connectivity to an ONVIF-compatible CCTV camera.">
+    <Panel title="ONVIF Media Server Test" subtitle="Verify connectivity to the IAS Media Server (port 8080).">
       <div class="centered">
         <Button label="Run Test" icon="pi pi-play" class="btn" @click="runOnvifTest"/>
       </div>
@@ -38,6 +38,7 @@ import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 
 import { testApi } from '@/api/posts'
+import { getMediaHealth } from '@/api/media'
 
 // Page blocking state
 const loading = ref(false)
@@ -107,27 +108,29 @@ async function runBackendLinkTest() {
 async function runOnvifTest() {
   loading.value = true
   try {
-    await new Promise(r => setTimeout(r, 1500))
-    showTestModal(
-      'ONVIF Camera Test',
-      true,
-      'Camera connection simulated successfully.',
-      JSON.stringify({
-        status: 'OK',
-        message: 'Dummy test — backend not yet implemented.',
-        camera: {
-          manufacturer: 'Generic ONVIF',
-          model: 'IP Camera',
-          firmware: 'v2.0.0',
-          profiles: ['Profile S', 'Profile T']
-        }
-      }, null, 2)
-    )
+    const response = await getMediaHealth()
+    if (response.status === 'healthy') {
+      showTestModal(
+        'ONVIF Media Server',
+        true,
+        'Media server is healthy and reachable.',
+        JSON.stringify(response, null, 2)
+      )
+    } else {
+      showTestModal(
+        'ONVIF Media Server',
+        false,
+        `Media server reports: ${response.status}`,
+        JSON.stringify(response, null, 2)
+      )
+    }
   } catch (error) {
+    console.error('ONVIF Media Server Error:', error)
     showTestModal(
-      'ONVIF Camera Test',
+      'ONVIF Media Server',
       false,
-      `Error: ${error.message || 'Test failed'}`
+      `Error: ${error.message || 'Failed to connect to media server'}`,
+      error.stack || JSON.stringify(error, null, 2)
     )
   } finally {
     loading.value = false

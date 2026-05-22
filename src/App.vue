@@ -20,10 +20,14 @@ const routeLabelMap = {
   Ai: 'IAS AI (Preview)',
   Dashboards: 'Dashboards',
   DashboardEdit: 'Edit Dashboard',
+  DashboardView: 'View Dashboard',
   Devices: 'Devices',
   DeviceProfiles: 'Device Profiles',
   IngestLogs: 'Ingest Logs',
   Diagnostics: 'Diagnostics',
+  Integrations: 'Integrations',
+  OnvifStreams: 'ONVIF Streams',
+  OnvifStreamDetail: 'Stream Detail',
   Settings: 'Settings',
   About: 'About',
 };
@@ -69,6 +73,8 @@ watch(
 <template>
   <Toast position="top-center"/>
   <SideNav />
+
+  <div class="ribbon"><span>DEMO BUILD</span></div>
 
   <main class="main">
     <Breadcrumb :home="home" :model="items" class="breadcrumb" />
@@ -134,5 +140,26 @@ watch(
   border-radius: 12px;
   margin-bottom: 20px;
   background-color: transparent;
+}
+
+.ribbon {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 16rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.ribbon span {
+  display: block;
+  width: 100%;
+  background: rgba(240, 173, 78, 0.85);
+  color: #18181B;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 14px 0;
+  letter-spacing: 1px;
 }
 </style>

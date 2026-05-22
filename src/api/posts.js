@@ -15,3 +15,7 @@ export const getServerConfig = () => apiFetch('/api/get_server_config', { method
 export const createDevice = (body) => apiFetch('/api/create_device', { method: 'POST', body: JSON.stringify(body) })
 export const updateDevice = (body) => apiFetch('/api/update_device', { method: 'POST', body: JSON.stringify(body) })
 export const deleteDevice = (body) => apiFetch('/api/delete_device', { method: 'POST', body: JSON.stringify(body) })
+export const saveDashboard = (body) => apiFetch('/api/save_dashboard', { method: 'POST', body: JSON.stringify(body) })
+export const getDashboard = (body) => apiFetch('/api/get_dashboard', { method: 'POST', body: JSON.stringify(body) })
+export const deleteDashboard = (body) => apiFetch('/api/delete_dashboard', { method: 'POST', body: JSON.stringify(body) })
+export const getDashboards = () => apiFetch('/api/get_dashboards', { method: 'POST' })
