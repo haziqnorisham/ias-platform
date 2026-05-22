@@ -46,6 +46,17 @@ const form = ref({
     decoder: ''
 });
 
+const dataMappings = ref([]);
+const dataTypeOptions = ['number', 'text'];
+
+function addMapping() {
+    dataMappings.value.push({ name: '', type: 'number' });
+}
+
+function removeMapping(index) {
+    dataMappings.value.splice(index, 1);
+}
+
 watch(() => props.visible, (isVisible) => {
     if (isVisible) {
         imageBase64.value = null;
@@ -62,6 +73,9 @@ watch(() => props.visible, (isVisible) => {
             if (props.profile.image_base64) {
                 imageBase64.value = props.profile.image_base64;
             }
+            dataMappings.value = props.profile.data_mappings
+                ? props.profile.data_mappings.map(m => ({ ...m }))
+                : [];
         } else {
             form.value = {
                 profile_name: '',
@@ -70,6 +84,7 @@ watch(() => props.visible, (isVisible) => {
                 communications_protocol: '',
                 decoder: ''
             };
+            dataMappings.value = [];
         }
     }
 });
@@ -128,7 +143,8 @@ function handleSave() {
         manufacturer: form.value.manufacturer,
         model_number: form.value.model_number,
         communications_protocol: form.value.communications_protocol,
-        decoder: form.value.decoder
+        decoder: form.value.decoder,
+        data_mappings: dataMappings.value
     };
     if (imageBase64.value) {
         payload.image_base64 = imageBase64.value;
@@ -237,6 +253,41 @@ function handleDeleteRequest() {
                     rows="5"
                     class="form-input decoder-textarea"
                 />
+            </div>
+            <div class="form-field full-width">
+                <label>Data Mappings</label>
+                <div class="mappings-container">
+                    <div v-if="!dataMappings.length" class="mappings-empty">
+                        No columns defined. Click "Add Column" to define a data mapping.
+                    </div>
+                    <div v-for="(mapping, index) in dataMappings" :key="index" class="mapping-row">
+                        <InputText
+                            v-model="mapping.name"
+                            placeholder="Column name"
+                            class="mapping-name-input"
+                        />
+                        <Select
+                            v-model="mapping.type"
+                            :options="dataTypeOptions"
+                            placeholder="Type"
+                            class="mapping-type-select"
+                        />
+                        <Button
+                            icon="pi pi-trash"
+                            size="small"
+                            severity="secondary"
+                            class="p-button-text mapping-remove-btn"
+                            @click="removeMapping(index)"
+                        />
+                    </div>
+                    <Button
+                        label="Add Column"
+                        icon="pi pi-plus"
+                        size="small"
+                        class="p-button-text mapping-add-btn"
+                        @click="addMapping"
+                    />
+                </div>
             </div>
         </div>
         <template #footer>
@@ -356,5 +407,54 @@ function handleDeleteRequest() {
 
 .decoder-textarea :deep(textarea) {
     resize: vertical;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    background: #0a0a0c;
+    color: #d4d4d4;
+    border-color: #2a2a2e;
+    tab-size: 4;
+}
+
+.mappings-container {
+    background: #121214;
+    border: 1px solid #2a2a2e;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.mappings-empty {
+    color: #666;
+    font-size: 0.8rem;
+    padding: 0.5rem 0;
+    text-align: center;
+}
+
+.mapping-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.mapping-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.mapping-name-input {
+    flex: 1;
+}
+
+.mapping-type-select {
+    width: 110px;
+    flex-shrink: 0;
+}
+
+.mapping-remove-btn {
+    flex-shrink: 0;
+}
+
+.mapping-add-btn {
+    margin-top: 0.25rem;
 }
 </style>

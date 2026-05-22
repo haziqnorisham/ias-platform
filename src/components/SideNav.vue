@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Dashboards', icon: 'pi pi-chart-bar', to: '/dashboards' },
   { label: 'Devices', icon: 'pi pi-microchip', to: '/devices' },
   { label: 'Device Profiles', icon: 'pi pi-wrench', to: '/device-profiles' },
+  { label: 'Data Browser', icon: 'pi pi-database', to: '/data-browser' },
   { label: 'Ingest Logs', icon: 'pi pi-chevron-circle-down', to: '/ingest-logs' },
   { label: 'Settings', icon: 'pi pi-cog', to: '/settings' },
   { label: 'Integrations', icon: 'pi pi-bolt', to: '/integrations' },
