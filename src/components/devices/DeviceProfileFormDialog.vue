@@ -5,6 +5,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
+import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
     visible: {
@@ -22,8 +23,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:visible', 'save', 'request-delete']);
+const toast = useToast();
 
 const dialogMode = computed(() => props.profile ? 'edit' : 'create');
+
+const fileInput = ref(null);
+const imageBase64 = ref(null);
+const previewSrc = computed(() => imageBase64.value ? `data:image/png;base64,${imageBase64.value}` : null);
 
 const form = ref({
     profile_name: '',
@@ -35,6 +41,8 @@ const form = ref({
 
 watch(() => props.visible, (isVisible) => {
     if (isVisible) {
+        imageBase64.value = null;
+        if (fileInput.value) fileInput.value.value = '';
         if (props.profile) {
             form.value = {
                 profile_name: props.profile.ProfileName || '',
@@ -43,6 +51,9 @@ watch(() => props.visible, (isVisible) => {
                 communications_protocol: props.profile.CommunicationsProtocol || '',
                 decoder: props.profile.Decoder || ''
             };
+            if (props.profile.ImageBase64) {
+                imageBase64.value = props.profile.ImageBase64;
+            }
         } else {
             form.value = {
                 profile_name: '',
@@ -54,6 +65,49 @@ watch(() => props.visible, (isVisible) => {
         }
     }
 });
+
+function triggerFileInput() {
+    fileInput.value?.click();
+}
+
+function handleImageSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'png') {
+        toast.add({ severity: 'error', summary: 'Invalid File Type', detail: 'Only .png files are allowed.', life: 3000 });
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        const img = new Image();
+        img.onload = () => {
+            if (img.naturalWidth !== 216 || img.naturalHeight !== 329) {
+                toast.add({ severity: 'error', summary: 'Invalid Dimensions', detail: `Image must be 216×329px. Selected image is ${img.naturalWidth}×${img.naturalHeight}px.`, life: 3000 });
+                imageBase64.value = null;
+                event.target.value = '';
+                return;
+            }
+            imageBase64.value = dataUrl.replace('data:image/png;base64,', '');
+        };
+        img.onerror = () => {
+            toast.add({ severity: 'error', summary: 'Invalid Image', detail: 'The selected file is not a valid image.', life: 3000 });
+            imageBase64.value = null;
+            event.target.value = '';
+        };
+        img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleRemoveImage() {
+    imageBase64.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+}
 
 function closeDialog() {
     emit('update:visible', false);
@@ -67,6 +121,9 @@ function handleSave() {
         CommunicationsProtocol: form.value.communications_protocol,
         Decoder: form.value.decoder
     };
+    if (imageBase64.value) {
+        payload.ImageBase64 = imageBase64.value;
+    }
     emit('save', payload);
 }
 
@@ -123,6 +180,43 @@ function handleDeleteRequest() {
                     class="form-input"
                 />
             </div>
+            <div class="form-field full-width image-upload-row">
+                <label>Profile Image</label>
+                <div class="image-upload-area">
+                    <input
+                        type="file"
+                        ref="fileInput"
+                        accept=".png"
+                        style="display: none"
+                        @change="handleImageSelect"
+                    />
+                    <div class="image-preview-wrapper" :class="{ 'has-image': previewSrc }">
+                        <img v-if="previewSrc" :src="previewSrc" alt="Profile Image" class="image-preview" />
+                        <div v-else class="image-placeholder">
+                            <i class="pi pi-image" style="font-size: 2rem; color: #555"></i>
+                            <span>216 × 329px</span>
+                            <span class="placeholder-hint">PNG only</span>
+                        </div>
+                    </div>
+                    <div class="image-upload-actions">
+                        <Button
+                            label="Upload Image"
+                            icon="pi pi-upload"
+                            size="small"
+                            @click="triggerFileInput"
+                        />
+                        <Button
+                            v-if="previewSrc"
+                            label="Remove"
+                            icon="pi pi-times"
+                            size="small"
+                            severity="secondary"
+                            class="p-button-text"
+                            @click="handleRemoveImage"
+                        />
+                    </div>
+                </div>
+            </div>
             <div class="form-field full-width">
                 <label for="decoder">Decoder</label>
                 <Textarea
@@ -131,7 +225,7 @@ function handleDeleteRequest() {
                     placeholder="Enter decoder logic or script..."
                     :autoResize="true"
                     rows="5"
-                    class="form-input"
+                    class="form-input decoder-textarea"
                 />
             </div>
         </div>
@@ -195,5 +289,62 @@ function handleDeleteRequest() {
     display: flex;
     gap: 0.5rem;
     margin-left: auto;
+}
+
+.image-upload-area {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.image-preview-wrapper {
+    width: 108px;
+    height: 165px;
+    border: 2px dashed #3a3a3e;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #121214;
+    transition: border-color 0.2s;
+}
+
+.image-preview-wrapper.has-image {
+    border-style: solid;
+    border-color: #2a2a2e;
+}
+
+.image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: #666;
+    font-size: 0.75rem;
+    font-family: "Space Grotesk", sans-serif;
+    text-align: center;
+}
+
+.image-placeholder .placeholder-hint {
+    color: #555;
+    font-size: 0.7rem;
+}
+
+.image-upload-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.decoder-textarea :deep(textarea) {
+    resize: vertical;
 }
 </style>

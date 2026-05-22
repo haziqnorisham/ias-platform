@@ -6,6 +6,7 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import ToggleSwitch from 'primevue/toggleswitch';
+import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({
     visible: {
@@ -23,6 +24,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:visible', 'save', 'request-delete']);
+const toast = useToast();
 
 const dialogMode = computed(() => props.device ? 'edit' : 'create');
 
@@ -64,6 +66,10 @@ function closeDialog() {
 }
 
 function handleSave() {
+    if (!form.value.profile_id) {
+        toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Please select a Device Profile.', life: 3000 });
+        return;
+    }
     const payload = {
         Id: form.value.id,
         Name: form.value.name,

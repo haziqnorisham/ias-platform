@@ -1,7 +1,8 @@
 <script setup>
+import { ref, computed } from 'vue';
 import Chip from 'primevue/chip';
 
-defineProps({
+const props = defineProps({
     device: {
         type: Object,
         required: true
@@ -9,6 +10,16 @@ defineProps({
 });
 
 const emit = defineEmits(['edit']);
+
+const fallbackActive = ref(false);
+const imageSrc = computed(() => {
+    if (fallbackActive.value || !props.device.ProfileID) return '/MCS.png';
+    return `/device_profile_${props.device.ProfileID}.png`;
+});
+
+function onImageError() {
+    fallbackActive.value = true;
+}
 </script>
 
 <template>
@@ -18,7 +29,7 @@ const emit = defineEmits(['edit']);
             <div class="bold device-name-link" @click="emit('edit', device)">{{ device.Name }}</div>
             <Chip :label="device.Status || 'Unknown'" icon="pi pi-circle-fill" class="chip_style" :class="device.Status === 'active' ? 'chip_active' : 'chip_inactive'" />
         </div>
-        <img src="/MCS.png" style="height: 10rem;">
+        <img :src="imageSrc" style="height: 10rem;" @error="onImageError">
         <div class="device_details">
             <div class="detail-row"><span class="detail-label">Name:</span> <span class="detail-value">{{ device.Name || '—' }}</span></div>
             <div class="detail-row"><span class="detail-label">Description:</span> <span class="detail-value">{{ device.Description || '—' }}</span></div>
