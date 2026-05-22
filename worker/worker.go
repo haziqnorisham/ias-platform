@@ -191,7 +191,7 @@ func processRecord(db *ias_pg.PostgresStorage, raw ias_pg.HcRawIngest) {
 		ErrorMessage:     errorMsg,
 	}
 
-	if err := db.InsertProcessedData(processed); err != nil {
+	if _, err := db.InsertProcessedData(processed); err != nil {
 		log.Error("Failed to insert processed data", "error", err)
 		return
 	}

@@ -389,11 +389,12 @@ func (p *PostgresStorage) UpdateRawIngestStatus(messageID int64, status string) 
 	return err
 }
 
-// InsertProcessedData stores a processed data record.
-func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) error {
-	query := `INSERT INTO hc_processed_data (raw_message_id, device_id, profile_id, processed_payload, success, error_message) VALUES ($1, $2, $3, $4, $5, $6);`
-	_, err := p.DB.Exec(query, data.RawMessageID, data.DeviceID, data.ProfileID, data.ProcessedPayload, data.Success, data.ErrorMessage)
-	return err
+// InsertProcessedData stores a processed data record. Returns the new record's ID.
+func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) (int64, error) {
+	query := `INSERT INTO hc_processed_data (raw_message_id, device_id, profile_id, processed_payload, success, error_message) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;`
+	var id int64
+	err := p.DB.QueryRow(query, data.RawMessageID, data.DeviceID, data.ProfileID, data.ProcessedPayload, data.Success, data.ErrorMessage).Scan(&id)
+	return id, err
 }
 
 // QueryProcessedData retrieves processed data records with pagination and optional filters.
