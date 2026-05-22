@@ -66,6 +66,15 @@ type HcDashboard struct {
 	UpdatedAt  time.Time `db:"updated_at"`
 }
 
+type HcIngestSummary struct {
+	ID              int       `db:"id"`
+	RawIngestID     int64     `db:"raw_ingest_id"`
+	LastProcessedID int64     `db:"last_processed_id"`
+	ProcessCount    int       `db:"process_count"`
+	CreatedAt       time.Time `db:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"`
+}
+
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS hc_raw_ingest (
@@ -114,9 +123,9 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 		);`,
 		`CREATE TABLE IF NOT EXISTS hc_ingest_summary (
 			id SERIAL PRIMARY KEY,
-			raw_ingest_id BIGSERIAL REFERENCES hc_raw_ingest(message_id),
-			last_processed_id BIGSERIAL REFERENCES hc_processed_data(id),
-			process_count SERIAL NOT NULL,
+			raw_ingest_id BIGINT UNIQUE REFERENCES hc_raw_ingest(message_id),
+			last_processed_id BIGINT REFERENCES hc_processed_data(id),
+			process_count INT NOT NULL DEFAULT 1,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
