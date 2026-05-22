@@ -522,6 +522,45 @@ func DeleteDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
+// GetDeviceSuccessfulIngest handles POST /api/get_device_successful_ingest
+func GetDeviceSuccessfulIngest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		DeviceID string `json:"device_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.DeviceID == "" {
+		http.Error(w, `{"error":"device_id is required"}`, http.StatusBadRequest)
+		return
+	}
+	slog.Info("Retrieving successful ingest records for device", "device_id", req.DeviceID, "process", "hc_handler_main")
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	records, err := ias_db.GetSuccessfulIngestByDeviceID(req.DeviceID)
+	if err != nil {
+		slog.Error("Failed to retrieve ingest summary", "device_id", req.DeviceID, "error", err)
+		http.Error(w, `{"error":"failed to retrieve ingest summary"}`, http.StatusInternalServerError)
+		return
+	}
+	if records == nil {
+		records = []ias_pg.HcDeviceIngestSummary{}
+	}
+	jsonData, err := json.Marshal(records)
+	if err != nil {
+		slog.Error("Failed to marshal ingest summary", "error", err)
+		http.Error(w, `{"error":"failed to marshal ingest summary"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
 // GetProcessedData handles POST /api/get_processed_data
 func GetProcessedData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

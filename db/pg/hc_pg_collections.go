@@ -75,6 +75,18 @@ type HcIngestSummary struct {
 	UpdatedAt       time.Time `db:"updated_at"`
 }
 
+type HcDeviceIngestSummary struct {
+	MessageID        int64     `json:"message_id"`
+	Topic            string    `json:"topic"`
+	Payload          string    `json:"payload"`
+	DeviceID         *string   `json:"device_id"`
+	IngestMethod     string    `json:"ingest_method"`
+	Status           string    `json:"status"`
+	ReceivedAt       time.Time `json:"received_at"`
+	ProcessedPayload string    `json:"processed_payload"`
+	Success          bool      `json:"success"`
+}
+
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS hc_raw_ingest (
@@ -575,4 +587,33 @@ func (p *PostgresStorage) BatchUpdateRawIngestStatus(messageIDs []int64, status 
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// GetSuccessfulIngestByDeviceID returns all raw ingest records for a device whose
+// last processed record was successful, along with the processed payload.
+func (p *PostgresStorage) GetSuccessfulIngestByDeviceID(deviceID string) ([]HcDeviceIngestSummary, error) {
+	query := `
+		SELECT r.message_id, r.topic, r.payload, r.device_id, r.ingest_method, r.status, r.received_at,
+		       p.processed_payload, p.success
+		FROM hc_raw_ingest r
+		JOIN hc_ingest_summary s ON s.raw_ingest_id = r.message_id
+		JOIN hc_processed_data p ON p.id = s.last_processed_id
+		WHERE r.device_id = $1 AND p.success = true
+		ORDER BY r.message_id DESC;
+	`
+	rows, err := p.DB.Query(query, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []HcDeviceIngestSummary
+	for rows.Next() {
+		var r HcDeviceIngestSummary
+		if err := rows.Scan(&r.MessageID, &r.Topic, &r.Payload, &r.DeviceID, &r.IngestMethod, &r.Status, &r.ReceivedAt, &r.ProcessedPayload, &r.Success); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+	return results, rows.Err()
 }

@@ -43,6 +43,9 @@ func SetupRoutes(rdb *redis_lib.Client) {
 		http.HandleFunc("/api/delete_device", func(w http.ResponseWriter, r *http.Request) {
 			DeleteDeviceHandler(w, r)
 		})
+		http.HandleFunc("/api/get_device_successful_ingest", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceSuccessfulIngest(w, r)
+		})
 		http.HandleFunc("/api/get_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
 			GetRawIngest(w, r)
 		})
