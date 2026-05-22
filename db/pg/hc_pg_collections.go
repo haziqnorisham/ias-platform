@@ -397,6 +397,22 @@ func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) (int64, erro
 	return id, err
 }
 
+// UpsertIngestSummary creates or updates a summary row for a raw ingest record.
+// On first insert, process_count starts at 1. On subsequent reprocessing, the counter is incremented.
+func (p *PostgresStorage) UpsertIngestSummary(rawIngestID int64, lastProcessedID int64) error {
+	query := `
+		INSERT INTO hc_ingest_summary (raw_ingest_id, last_processed_id, process_count)
+		VALUES ($1, $2, 1)
+		ON CONFLICT (raw_ingest_id)
+		DO UPDATE SET
+			last_processed_id = $2,
+			process_count = hc_ingest_summary.process_count + 1,
+			updated_at = NOW();
+	`
+	_, err := p.DB.Exec(query, rawIngestID, lastProcessedID)
+	return err
+}
+
 // QueryProcessedData retrieves processed data records with pagination and optional filters.
 func (p *PostgresStorage) QueryProcessedData(limit int, offset int, sortByID string, success *bool, deviceID string, rawMessageID *int64) ([]HcProcessedData, error) {
 	if limit <= 0 {

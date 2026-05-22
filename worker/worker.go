@@ -191,9 +191,14 @@ func processRecord(db *ias_pg.PostgresStorage, raw ias_pg.HcRawIngest) {
 		ErrorMessage:     errorMsg,
 	}
 
-	if _, err := db.InsertProcessedData(processed); err != nil {
+	processedID, err := db.InsertProcessedData(processed)
+	if err != nil {
 		log.Error("Failed to insert processed data", "error", err)
 		return
+	}
+
+	if err := db.UpsertIngestSummary(raw.MessageID, processedID); err != nil {
+		log.Error("Failed to upsert ingest summary", "error", err)
 	}
 
 	status := ias_pg.IngestStatusProcessed
