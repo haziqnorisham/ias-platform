@@ -13,6 +13,9 @@ COPY --chmod=0755 ias_automation_v0.01 .
 # Copy .env file
 COPY .env .
 
+# Create public directory for device profile images
+RUN mkdir -p public
+
 # Expose port (adjust to your HTTP_SERVER_PORT)
 EXPOSE 8080
 

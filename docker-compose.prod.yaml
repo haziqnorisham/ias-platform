@@ -28,6 +28,8 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    volumes:
+      - ias-public:/app/public
     depends_on:
       redis:
         condition: service_healthy
@@ -44,6 +46,8 @@ services:
     restart: unless-stopped
 volumes:
   redis-data:
+    driver: local
+  ias-public:
     driver: local
 
 networks:

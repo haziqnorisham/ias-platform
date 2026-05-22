@@ -15,6 +15,7 @@ var currentServer *http.Server
 
 func SetupRoutes(rdb *redis_lib.Client) {
 	http.HandleFunc("/", homeHandler)
+	http.Handle("/api/image/", http.StripPrefix("/api/image/", http.FileServer(http.Dir("public"))))
 
 	if os.Getenv("IAS_HC_BACKEND_ENABLE") == "true" {
 		http.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +69,18 @@ func SetupRoutes(rdb *redis_lib.Client) {
 		})
 		http.HandleFunc("/api/delete_device_profile", func(w http.ResponseWriter, r *http.Request) {
 			DeleteDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/save_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			SaveDashboard(w, r)
+		})
+		http.HandleFunc("/api/get_dashboards", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboards(w, r)
+		})
+		http.HandleFunc("/api/get_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboard(w, r)
+		})
+		http.HandleFunc("/api/delete_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDashboardHandler(w, r)
 		})
 	}
 	http.HandleFunc("/GET_ALL_TREE_SENSOR", func(w http.ResponseWriter, r *http.Request) {

@@ -58,6 +58,14 @@ type HcRawIngest struct {
 	ReceivedAt   time.Time `db:"received_at"`
 }
 
+type HcDashboard struct {
+	Id         int       `db:"id"`
+	Name       string    `db:"name"`
+	LayoutJSON string    `db:"layout_json"`
+	CreatedAt  time.Time `db:"created_at"`
+	UpdatedAt  time.Time `db:"updated_at"`
+}
+
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS hc_raw_ingest (
@@ -96,6 +104,21 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			success BOOLEAN NOT NULL DEFAULT true,
 			error_message TEXT DEFAULT '',
 			processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);`,
+		`CREATE TABLE IF NOT EXISTS hc_dashboards (
+			id SERIAL PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			layout_json TEXT DEFAULT '',
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);`,
+		`CREATE TABLE IF NOT EXISTS hc_ingest_summary (
+			id SERIAL PRIMARY KEY,
+			raw_ingest_id BIGSERIAL REFERENCES hc_raw_ingest(message_id),
+			last_processed_id BIGSERIAL REFERENCES hc_processed_data(id),
+			process_count SERIAL NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
 	}
 
@@ -450,6 +473,60 @@ func (p *PostgresStorage) CountProcessedData(success *bool, deviceID string, raw
 		return 0, err
 	}
 	return total, nil
+}
+
+// InsertDashboard stores a new dashboard and returns the created row.
+func (p *PostgresStorage) InsertDashboard(d HcDashboard) (HcDashboard, error) {
+	query := `INSERT INTO hc_dashboards (name, layout_json) VALUES ($1, $2) RETURNING id, name, layout_json, created_at, updated_at;`
+	var result HcDashboard
+	err := p.DB.QueryRow(query, d.Name, d.LayoutJSON).Scan(&result.Id, &result.Name, &result.LayoutJSON, &result.CreatedAt, &result.UpdatedAt)
+	return result, err
+}
+
+// UpdateDashboard updates an existing dashboard and returns the updated row.
+func (p *PostgresStorage) UpdateDashboard(d HcDashboard) (HcDashboard, error) {
+	query := `UPDATE hc_dashboards SET name=$1, layout_json=$2, updated_at=NOW() WHERE id=$3 RETURNING id, name, layout_json, created_at, updated_at;`
+	var result HcDashboard
+	err := p.DB.QueryRow(query, d.Name, d.LayoutJSON, d.Id).Scan(&result.Id, &result.Name, &result.LayoutJSON, &result.CreatedAt, &result.UpdatedAt)
+	return result, err
+}
+
+// GetAllDashboardSummaries retrieves summary information for all dashboards.
+func (p *PostgresStorage) GetAllDashboardSummaries() ([]HcDashboard, error) {
+	query := `SELECT id, name, created_at, updated_at FROM hc_dashboards ORDER BY id;`
+	rows, err := p.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dashboards []HcDashboard
+	for rows.Next() {
+		var d HcDashboard
+		if err := rows.Scan(&d.Id, &d.Name, &d.CreatedAt, &d.UpdatedAt); err != nil {
+			return nil, err
+		}
+		dashboards = append(dashboards, d)
+	}
+	return dashboards, rows.Err()
+}
+
+// GetDashboardByID retrieves a single dashboard by its id.
+func (p *PostgresStorage) GetDashboardByID(id int) (*HcDashboard, error) {
+	query := `SELECT id, name, layout_json, created_at, updated_at FROM hc_dashboards WHERE id = $1;`
+	var d HcDashboard
+	err := p.DB.QueryRow(query, id).Scan(&d.Id, &d.Name, &d.LayoutJSON, &d.CreatedAt, &d.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// DeleteDashboard removes a dashboard by its id.
+func (p *PostgresStorage) DeleteDashboard(id int) error {
+	query := `DELETE FROM hc_dashboards WHERE id = $1;`
+	_, err := p.DB.Exec(query, id)
+	return err
 }
 
 // BatchUpdateRawIngestStatus updates the status of multiple raw ingest records.

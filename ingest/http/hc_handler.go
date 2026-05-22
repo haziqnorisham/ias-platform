@@ -1,7 +1,9 @@
 package http
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	ias_pg "ias/automation/db/pg"
 	"log/slog"
 	"net/http"
@@ -19,6 +21,29 @@ func SetupHcSchema() error {
 		return err
 	}
 	slog.Info("HC schema created successfully", "process", "hc_handler_main")
+	return nil
+}
+
+func saveDeviceProfileImage(profileID int, imageBase64 string) error {
+	if imageBase64 == "" {
+		return nil
+	}
+	if err := os.MkdirAll("public", 0755); err != nil {
+		return err
+	}
+	data, err := base64.StdEncoding.DecodeString(imageBase64)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fmt.Sprintf("public/device_profile_%d.png", profileID), data, 0644)
+}
+
+func getDeviceProfileImageURL(profileID int) *string {
+	path := fmt.Sprintf("public/device_profile_%d.png", profileID)
+	if _, err := os.Stat(path); err == nil {
+		url := fmt.Sprintf("/api/image/device_profile_%d.png", profileID)
+		return &url
+	}
 	return nil
 }
 
@@ -164,7 +189,28 @@ func GetDeviceProfiles(w http.ResponseWriter, r *http.Request) {
 	if profiles == nil {
 		profiles = []ias_pg.HcDeviceProfile{}
 	}
-	jsonData, err := json.Marshal(profiles)
+	type profileWithImage struct {
+		ProfileID              int     `json:"profile_id"`
+		ProfileName            string  `json:"profile_name"`
+		Manufacturer           string  `json:"manufacturer"`
+		ModelNumber            string  `json:"model_number"`
+		CommunicationsProtocol string  `json:"communications_protocol"`
+		Decoder                string  `json:"decoder"`
+		ImageURL               *string `json:"image_url"`
+	}
+	results := make([]profileWithImage, len(profiles))
+	for i, p := range profiles {
+		results[i] = profileWithImage{
+			ProfileID:              p.ProfileID,
+			ProfileName:            p.ProfileName,
+			Manufacturer:           p.Manufacturer,
+			ModelNumber:            p.ModelNumber,
+			CommunicationsProtocol: p.CommunicationsProtocol,
+			Decoder:                p.Decoder,
+			ImageURL:               getDeviceProfileImageURL(p.ProfileID),
+		}
+	}
+	jsonData, err := json.Marshal(results)
 	if err != nil {
 		slog.Error("Failed to marshal device profiles", "error", err)
 		http.Error(w, `{"error":"failed to marshal device profiles"}`, http.StatusInternalServerError)
@@ -196,7 +242,24 @@ func GetDeviceProfileByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"profile not found"}`, http.StatusNotFound)
 		return
 	}
-	jsonData, err := json.Marshal(profile)
+	resp := struct {
+		ProfileID              int     `json:"profile_id"`
+		ProfileName            string  `json:"profile_name"`
+		Manufacturer           string  `json:"manufacturer"`
+		ModelNumber            string  `json:"model_number"`
+		CommunicationsProtocol string  `json:"communications_protocol"`
+		Decoder                string  `json:"decoder"`
+		ImageURL               *string `json:"image_url"`
+	}{
+		ProfileID:              profile.ProfileID,
+		ProfileName:            profile.ProfileName,
+		Manufacturer:           profile.Manufacturer,
+		ModelNumber:            profile.ModelNumber,
+		CommunicationsProtocol: profile.CommunicationsProtocol,
+		Decoder:                profile.Decoder,
+		ImageURL:               getDeviceProfileImageURL(profile.ProfileID),
+	}
+	jsonData, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("Failed to marshal device profile", "error", err)
 		http.Error(w, `{"error":"failed to marshal device profile"}`, http.StatusInternalServerError)
@@ -335,22 +398,39 @@ func CreateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	var profile ias_pg.HcDeviceProfile
-	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+	var req struct {
+		ProfileName            string `json:"profile_name"`
+		Manufacturer           string `json:"manufacturer"`
+		ModelNumber            string `json:"model_number"`
+		CommunicationsProtocol string `json:"communications_protocol"`
+		Decoder                string `json:"decoder"`
+		ImageBase64            string `json:"image_base64"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-	if profile.ProfileName == "" {
+	if req.ProfileName == "" {
 		http.Error(w, `{"error":"profile_name is required"}`, http.StatusBadRequest)
 		return
 	}
-	slog.Info("Creating device profile", "profile_name", profile.ProfileName, "process", "hc_handler_main")
+	slog.Info("Creating device profile", "profile_name", req.ProfileName, "process", "hc_handler_main")
 	ias_db := ias_pg.NewPostgresStorage(nil)
+	profile := ias_pg.HcDeviceProfile{
+		ProfileName:            req.ProfileName,
+		Manufacturer:           req.Manufacturer,
+		ModelNumber:            req.ModelNumber,
+		CommunicationsProtocol: req.CommunicationsProtocol,
+		Decoder:                req.Decoder,
+	}
 	id, err := ias_db.InsertDeviceProfile(profile)
 	if err != nil {
 		slog.Error("Failed to create device profile", "error", err)
 		http.Error(w, `{"error":"failed to create device profile"}`, http.StatusInternalServerError)
 		return
+	}
+	if err := saveDeviceProfileImage(id, req.ImageBase64); err != nil {
+		slog.Error("Failed to save device profile image", "profile_id", id, "error", err)
 	}
 	resp := struct {
 		ProfileID int    `json:"profile_id"`
@@ -368,17 +448,38 @@ func UpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	var profile ias_pg.HcDeviceProfile
-	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+	var req struct {
+		ProfileID              int    `json:"profile_id"`
+		ProfileName            string `json:"profile_name"`
+		Manufacturer           string `json:"manufacturer"`
+		ModelNumber            string `json:"model_number"`
+		CommunicationsProtocol string `json:"communications_protocol"`
+		Decoder                string `json:"decoder"`
+		ImageBase64            string `json:"image_base64"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-	if profile.ProfileID == 0 {
+	if req.ProfileID == 0 {
 		http.Error(w, `{"error":"profile_id is required"}`, http.StatusBadRequest)
 		return
 	}
-	slog.Info("Updating device profile", "profile_id", profile.ProfileID, "process", "hc_handler_main")
+	slog.Info("Updating device profile", "profile_id", req.ProfileID, "process", "hc_handler_main")
+	if req.ImageBase64 != "" {
+		if err := saveDeviceProfileImage(req.ProfileID, req.ImageBase64); err != nil {
+			slog.Error("Failed to save device profile image", "profile_id", req.ProfileID, "error", err)
+		}
+	}
 	ias_db := ias_pg.NewPostgresStorage(nil)
+	profile := ias_pg.HcDeviceProfile{
+		ProfileID:              req.ProfileID,
+		ProfileName:            req.ProfileName,
+		Manufacturer:           req.Manufacturer,
+		ModelNumber:            req.ModelNumber,
+		CommunicationsProtocol: req.CommunicationsProtocol,
+		Decoder:                req.Decoder,
+	}
 	if err := ias_db.UpdateDeviceProfile(profile); err != nil {
 		slog.Error("Failed to update device profile", "error", err)
 		http.Error(w, `{"error":"failed to update device profile"}`, http.StatusInternalServerError)
@@ -414,6 +515,7 @@ func DeleteDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"failed to delete device profile"}`, http.StatusInternalServerError)
 		return
 	}
+	os.Remove(fmt.Sprintf("public/device_profile_%d.png", req.ProfileID))
 	jsonData, _ := json.Marshal(map[string]string{"message": "device profile deleted successfully"})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -428,12 +530,12 @@ func GetProcessedData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type requestBody struct {
-		Limit         int    `json:"limit"`
-		Offset        int    `json:"offset"`
-		SortByID      string `json:"sort_by_id"`
-		Success       *bool  `json:"success"`
-		DeviceID      string `json:"device_id"`
-		RawMessageID  *int64 `json:"raw_message_id"`
+		Limit        int    `json:"limit"`
+		Offset       int    `json:"offset"`
+		SortByID     string `json:"sort_by_id"`
+		Success      *bool  `json:"success"`
+		DeviceID     string `json:"device_id"`
+		RawMessageID *int64 `json:"raw_message_id"`
 	}
 	body := requestBody{
 		Limit:    100,
@@ -489,7 +591,7 @@ func GetProcessedData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := struct {
-		Total   int                     `json:"total"`
+		Total   int                      `json:"total"`
 		Records []ias_pg.HcProcessedData `json:"records"`
 	}{
 		Total:   total,
@@ -604,6 +706,173 @@ func GetServerConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// SaveDashboard handles POST /api/save_dashboard
+// Body: { id?, name, layout_json } — creates if no id, updates if id present
+func SaveDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var dashboard ias_pg.HcDashboard
+	if err := json.NewDecoder(r.Body).Decode(&dashboard); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if dashboard.Name == "" {
+		http.Error(w, `{"error":"name is required"}`, http.StatusBadRequest)
+		return
+	}
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	var result ias_pg.HcDashboard
+	var err error
+	if dashboard.Id == 0 {
+		slog.Info("Creating dashboard", "name", dashboard.Name, "process", "hc_handler_main")
+		result, err = ias_db.InsertDashboard(dashboard)
+	} else {
+		slog.Info("Updating dashboard", "id", dashboard.Id, "process", "hc_handler_main")
+		result, err = ias_db.UpdateDashboard(dashboard)
+	}
+	if err != nil {
+		slog.Error("Failed to save dashboard", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to save dashboard"}`, http.StatusInternalServerError)
+		return
+	}
+	resp := struct {
+		Id         int    `json:"id"`
+		Name       string `json:"name"`
+		LayoutJSON string `json:"layout_json"`
+	}{
+		Id:         result.Id,
+		Name:       result.Name,
+		LayoutJSON: result.LayoutJSON,
+	}
+	jsonData, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// GetDashboards handles POST /api/get_dashboards
+// Returns summary list: Array of { id, name, updated_at }
+func GetDashboards(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	slog.Info("Retrieving all dashboard summaries", "process", "hc_handler_main")
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	dashboards, err := ias_db.GetAllDashboardSummaries()
+	if err != nil {
+		slog.Error("Failed to retrieve dashboards", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to retrieve dashboards"}`, http.StatusInternalServerError)
+		return
+	}
+	if dashboards == nil {
+		dashboards = []ias_pg.HcDashboard{}
+	}
+	summaries := make([]map[string]interface{}, len(dashboards))
+	for i, d := range dashboards {
+		summaries[i] = map[string]interface{}{
+			"id":         d.Id,
+			"name":       d.Name,
+			"updated_at": d.UpdatedAt,
+		}
+	}
+	jsonData, err := json.Marshal(summaries)
+	if err != nil {
+		slog.Error("Failed to marshal dashboards", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to marshal dashboards"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// GetDashboard handles POST /api/get_dashboard
+// Body: { id }, returns: { id, name, layout_json }
+func GetDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Id int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Id == 0 {
+		http.Error(w, `{"error":"id is required"}`, http.StatusBadRequest)
+		return
+	}
+	slog.Info("Retrieving dashboard by ID", "id", req.Id, "process", "hc_handler_main")
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	dashboard, err := ias_db.GetDashboardByID(req.Id)
+	if err != nil {
+		slog.Error("Failed to retrieve dashboard", "id", req.Id, "error", err)
+		http.Error(w, `{"error":"dashboard not found"}`, http.StatusNotFound)
+		return
+	}
+	resp := struct {
+		Id         int    `json:"id"`
+		Name       string `json:"name"`
+		LayoutJSON string `json:"layout_json"`
+	}{
+		Id:         dashboard.Id,
+		Name:       dashboard.Name,
+		LayoutJSON: dashboard.LayoutJSON,
+	}
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("Failed to marshal dashboard", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to marshal dashboard"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// DeleteDashboardHandler handles POST /api/delete_dashboard
+// Body: { id }, returns: { id, status: "deleted" }
+func DeleteDashboardHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Id int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Id == 0 {
+		http.Error(w, `{"error":"id is required"}`, http.StatusBadRequest)
+		return
+	}
+	slog.Info("Deleting dashboard", "id", req.Id, "process", "hc_handler_main")
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	if err := ias_db.DeleteDashboard(req.Id); err != nil {
+		slog.Error("Failed to delete dashboard", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to delete dashboard"}`, http.StatusInternalServerError)
+		return
+	}
+	resp := struct {
+		Id     int    `json:"id"`
+		Status string `json:"status"`
+	}{
+		Id:     req.Id,
+		Status: "deleted",
+	}
+	jsonData, _ := json.Marshal(resp)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
