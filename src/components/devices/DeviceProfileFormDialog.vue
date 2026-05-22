@@ -29,7 +29,14 @@ const dialogMode = computed(() => props.profile ? 'edit' : 'create');
 
 const fileInput = ref(null);
 const imageBase64 = ref(null);
+const serverImageFailed = ref(false);
 const previewSrc = computed(() => imageBase64.value ? `data:image/png;base64,${imageBase64.value}` : null);
+const serverImageUrl = computed(() => {
+    if (dialogMode.value === 'edit' && props.profile?.profile_id) {
+        return `/api/image/device_profile_${props.profile.profile_id}.png`;
+    }
+    return null;
+});
 
 const form = ref({
     profile_name: '',
@@ -42,17 +49,18 @@ const form = ref({
 watch(() => props.visible, (isVisible) => {
     if (isVisible) {
         imageBase64.value = null;
+        serverImageFailed.value = false;
         if (fileInput.value) fileInput.value.value = '';
         if (props.profile) {
             form.value = {
-                profile_name: props.profile.ProfileName || '',
-                manufacturer: props.profile.Manufacturer || '',
-                model_number: props.profile.ModelNumber || '',
-                communications_protocol: props.profile.CommunicationsProtocol || '',
-                decoder: props.profile.Decoder || ''
+                profile_name: props.profile.profile_name || '',
+                manufacturer: props.profile.manufacturer || '',
+                model_number: props.profile.model_number || '',
+                communications_protocol: props.profile.communications_protocol || '',
+                decoder: props.profile.decoder || ''
             };
-            if (props.profile.ImageBase64) {
-                imageBase64.value = props.profile.ImageBase64;
+            if (props.profile.image_base64) {
+                imageBase64.value = props.profile.image_base64;
             }
         } else {
             form.value = {
@@ -106,6 +114,7 @@ function handleImageSelect(event) {
 
 function handleRemoveImage() {
     imageBase64.value = null;
+    serverImageFailed.value = true;
     if (fileInput.value) fileInput.value.value = '';
 }
 
@@ -115,14 +124,14 @@ function closeDialog() {
 
 function handleSave() {
     const payload = {
-        ProfileName: form.value.profile_name,
-        Manufacturer: form.value.manufacturer,
-        ModelNumber: form.value.model_number,
-        CommunicationsProtocol: form.value.communications_protocol,
-        Decoder: form.value.decoder
+        profile_name: form.value.profile_name,
+        manufacturer: form.value.manufacturer,
+        model_number: form.value.model_number,
+        communications_protocol: form.value.communications_protocol,
+        decoder: form.value.decoder
     };
     if (imageBase64.value) {
-        payload.ImageBase64 = imageBase64.value;
+        payload.image_base64 = imageBase64.value;
     }
     emit('save', payload);
 }
@@ -190,8 +199,9 @@ function handleDeleteRequest() {
                         style="display: none"
                         @change="handleImageSelect"
                     />
-                    <div class="image-preview-wrapper" :class="{ 'has-image': previewSrc }">
+                    <div class="image-preview-wrapper" :class="{ 'has-image': previewSrc || (serverImageUrl && !serverImageFailed) }">
                         <img v-if="previewSrc" :src="previewSrc" alt="Profile Image" class="image-preview" />
+                        <img v-else-if="serverImageUrl && !serverImageFailed" :src="serverImageUrl" alt="Existing Profile Image" class="image-preview" @error="serverImageFailed = true" />
                         <div v-else class="image-placeholder">
                             <i class="pi pi-image" style="font-size: 2rem; color: #555"></i>
                             <span>216 × 329px</span>
@@ -206,7 +216,7 @@ function handleDeleteRequest() {
                             @click="triggerFileInput"
                         />
                         <Button
-                            v-if="previewSrc"
+                            v-if="previewSrc || (serverImageUrl && !serverImageFailed)"
                             label="Remove"
                             icon="pi pi-times"
                             size="small"

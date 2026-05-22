@@ -47,7 +47,7 @@ async function handleDeleteConfirm() {
     loading.value = false
     confirmVisible.value = false
     try {
-        const payload = { profile_id: editingProfile.value.ProfileID }
+        const payload = { profile_id: editingProfile.value.profile_id }
         const result = await deleteDeviceProfile(payload)
         console.log('Profile deleted:', result)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Device profile deleted successfully.', life: 3000 })
@@ -65,7 +65,7 @@ async function handleSaveProfile(payload) {
     loading.value = false
     try {
         if (editingProfile.value) {
-            payload.ProfileID = editingProfile.value.ProfileID
+            payload.profile_id = editingProfile.value.profile_id
             const result = await updateDeviceProfile(payload)
             console.log('Profile updated:', result)
             toast.add({ severity: 'success', summary: 'Success', detail: 'Device profile updated successfully.', life: 3000 })
@@ -114,16 +114,16 @@ onMounted(() => {
     </div>
 
     <DataTable :value="profiles" stripedRows tableStyle="min-width: 50rem">
-        <Column field="ProfileID" header="Profile ID">
+        <Column field="profile_id" header="Profile ID">
             <template #body="{ data }">
-                <span class="profile-id-link" @click.stop="openEditProfileDialog(data)">{{ data.ProfileID }}</span>
+                <span class="profile-id-link" @click.stop="openEditProfileDialog(data)">{{ data.profile_id }}</span>
             </template>
         </Column>
-        <Column field="ProfileName" header="Profile Name"></Column>
-        <Column field="Manufacturer" header="Manufacturer"></Column>
-        <Column field="ModelNumber" header="Model Number"></Column>
-        <Column field="CommunicationsProtocol" header="Communications Protocol"></Column>
-        <Column field="Decoder" header="Decoder"></Column>
+        <Column field="profile_name" header="Profile Name"></Column>
+        <Column field="manufacturer" header="Manufacturer"></Column>
+        <Column field="model_number" header="Model Number"></Column>
+        <Column field="communications_protocol" header="Communications Protocol"></Column>
+        <Column field="decoder" header="Decoder"></Column>
     </DataTable>
 
     <DeviceProfileFormDialog

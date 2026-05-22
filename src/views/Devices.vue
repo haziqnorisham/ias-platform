@@ -43,8 +43,8 @@ async function fetchDeviceProfiles() {
         const result = await getDeviceProfiles()
         if (result) {
             deviceProfiles.value = result.map(p => ({
-                label: `${p.ProfileName} (${p.ProfileID})`,
-                value: p.ProfileID
+                label: `${p.profile_name} (${p.profile_id})`,
+                value: parseInt(p.profile_id, 10)
             }))
         }
     } catch (error) {

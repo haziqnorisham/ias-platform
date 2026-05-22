@@ -14,7 +14,7 @@ const emit = defineEmits(['edit']);
 const fallbackActive = ref(false);
 const imageSrc = computed(() => {
     if (fallbackActive.value || !props.device.ProfileID) return '/MCS.png';
-    return `/device_profile_${props.device.ProfileID}.png`;
+    return `/api/image/device_profile_${props.device.ProfileID}.png`;
 });
 
 function onImageError() {

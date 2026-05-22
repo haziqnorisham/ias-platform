@@ -68,19 +68,19 @@ function closeDialog() {
             <Column field="Success" header="Status">
                 <template #body="{ data }">
                     <Tag
-                        :value="data.success ? 'Success' : 'Failed'"
-                        :severity="data.success ? 'success' : 'danger'"
+                        :value="data.Success ? 'Success' : 'Failed'"
+                        :severity="data.Success ? 'success' : 'danger'"
                     />
                 </template>
             </Column>
-            <Column field="error_message" header="Error">
+            <Column field="ErrorMessage" header="Error">
                 <template #body="{ data }">
-                    <span :class="{ 'error-text': !data.success }">{{ data.ErrorMessage || '—' }}</span>
+                    <span :class="{ 'error-text': !data.Success }">{{ data.ErrorMessage || '—' }}</span>
                 </template>
             </Column>
-            <Column field="processed_payload" header="Processed Payload">
+            <Column field="ProcessedPayload" header="Processed Payload">
                 <template #body="{ data }">
-                    <span class="payload-cell">{{ data.processed_payload || '—' }}</span>
+                    <span class="payload-cell">{{ data.ProcessedPayload || '—' }}</span>
                 </template>
             </Column>
             <Column field="ProcessedAt" header="Processed At"></Column>

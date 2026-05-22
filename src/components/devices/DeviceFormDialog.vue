@@ -75,7 +75,7 @@ function handleSave() {
         Name: form.value.name,
         Description: form.value.description || null,
         LocationLabel: form.value.location_label || null,
-        ProfileID: form.value.profile_id,
+        ProfileID: Number(form.value.profile_id),
         Status: form.value.isActive ? 'active' : 'inactive'
     };
     emit('save', payload);
