@@ -18,34 +18,41 @@
     </div>
 
     <div v-if="selectedDevice" class="device-info-panel">
-      <h2 class="section-title">Device Information</h2>
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Device ID</span>
-          <span class="info-value">{{ selectedDevice.Id }}</span>
+      <div class="device-info-body">
+        <div class="device-info-left">
+          <h2 class="section-title">Device Information</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Device ID</span>
+              <span class="info-value">{{ selectedDevice.Id }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Name</span>
+              <span class="info-value">{{ selectedDevice.Name }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Description</span>
+              <span class="info-value">{{ selectedDevice.Description || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Profile ID</span>
+              <span class="info-value">{{ selectedDevice.ProfileID || '—' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Status</span>
+              <Tag
+                :value="selectedDevice.Status"
+                :severity="selectedDevice.Status === 'active' ? 'success' : 'danger'"
+              />
+            </div>
+            <div class="info-item">
+              <span class="info-label">Location</span>
+              <span class="info-value">{{ selectedDevice.LocationLabel || '—' }}</span>
+            </div>
+          </div>
         </div>
-        <div class="info-item">
-          <span class="info-label">Name</span>
-          <span class="info-value">{{ selectedDevice.Name }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Description</span>
-          <span class="info-value">{{ selectedDevice.Description || '—' }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Profile ID</span>
-          <span class="info-value">{{ selectedDevice.ProfileID || '—' }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Status</span>
-          <Tag
-            :value="selectedDevice.Status"
-            :severity="selectedDevice.Status === 'active' ? 'success' : 'danger'"
-          />
-        </div>
-        <div class="info-item">
-          <span class="info-label">Location</span>
-          <span class="info-value">{{ selectedDevice.LocationLabel || '—' }}</span>
+        <div class="device-info-right">
+          <img :src="imageSrc" class="device-image" @error="onImageError" />
         </div>
       </div>
     </div>
@@ -117,6 +124,16 @@ const selectedDevice = ref(null)
 
 const deviceData = ref([])
 const dataLoading = ref(false)
+const fallbackActive = ref(false)
+
+const imageSrc = computed(() => {
+  if (fallbackActive.value || !selectedDevice.value?.ProfileID) return '/MCS.png'
+  return `/api/image/device_profile_${selectedDevice.value.ProfileID}.png`
+})
+
+function onImageError() {
+  fallbackActive.value = true
+}
 
 const deviceOptions = computed(() =>
   devices.value.map(d => ({
@@ -218,6 +235,27 @@ onMounted(() => {
   border: 1px solid #2a2a2e;
   border-radius: 8px;
   padding: 1.25rem;
+}
+
+.device-info-body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.device-info-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-info-right {
+  flex-shrink: 0;
+}
+
+.device-image {
+  height: 10rem;
+  border-radius: 4px;
+  object-fit: contain;
 }
 
 .info-grid {
