@@ -19,3 +19,4 @@ export const saveDashboard = (body) => apiFetch('/api/save_dashboard', { method:
 export const getDashboard = (body) => apiFetch('/api/get_dashboard', { method: 'POST', body: JSON.stringify(body) })
 export const deleteDashboard = (body) => apiFetch('/api/delete_dashboard', { method: 'POST', body: JSON.stringify(body) })
 export const getDashboards = () => apiFetch('/api/get_dashboards', { method: 'POST' })
+export const getDeviceSuccessfulIngest = (body) => apiFetch('/api/get_device_successful_ingest', { method: 'POST', body: JSON.stringify(body) })
