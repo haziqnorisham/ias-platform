@@ -446,7 +446,7 @@ function handleDeleteRequest() {
 }
 
 .mapping-type-select {
-    width: 110px;
+    width: 130px;
     flex-shrink: 0;
 }
 
