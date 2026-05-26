@@ -196,7 +196,6 @@ func GetDeviceProfiles(w http.ResponseWriter, r *http.Request) {
 		ModelNumber            string  `json:"model_number"`
 		CommunicationsProtocol string  `json:"communications_protocol"`
 		Decoder                string  `json:"decoder"`
-		DataMappings           string  `json:"data_mappings"`
 		ImageURL               *string `json:"image_url"`
 	}
 	results := make([]profileWithImage, len(profiles))
@@ -208,7 +207,6 @@ func GetDeviceProfiles(w http.ResponseWriter, r *http.Request) {
 			ModelNumber:            p.ModelNumber,
 			CommunicationsProtocol: p.CommunicationsProtocol,
 			Decoder:                p.Decoder,
-			DataMappings:           p.DataMappings,
 			ImageURL:               getDeviceProfileImageURL(p.ProfileID),
 		}
 	}
@@ -251,7 +249,6 @@ func GetDeviceProfileByID(w http.ResponseWriter, r *http.Request) {
 		ModelNumber            string  `json:"model_number"`
 		CommunicationsProtocol string  `json:"communications_protocol"`
 		Decoder                string  `json:"decoder"`
-		DataMappings           string  `json:"data_mappings"`
 		ImageURL               *string `json:"image_url"`
 	}{
 		ProfileID:              profile.ProfileID,
@@ -260,7 +257,6 @@ func GetDeviceProfileByID(w http.ResponseWriter, r *http.Request) {
 		ModelNumber:            profile.ModelNumber,
 		CommunicationsProtocol: profile.CommunicationsProtocol,
 		Decoder:                profile.Decoder,
-		DataMappings:           profile.DataMappings,
 		ImageURL:               getDeviceProfileImageURL(profile.ProfileID),
 	}
 	jsonData, err := json.Marshal(resp)
@@ -408,7 +404,6 @@ func CreateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		ModelNumber            string `json:"model_number"`
 		CommunicationsProtocol string `json:"communications_protocol"`
 		Decoder                string `json:"decoder"`
-		DataMappings           string `json:"data_mappings"`
 		ImageBase64            string `json:"image_base64"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -427,7 +422,6 @@ func CreateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		ModelNumber:            req.ModelNumber,
 		CommunicationsProtocol: req.CommunicationsProtocol,
 		Decoder:                req.Decoder,
-		DataMappings:           req.DataMappings,
 	}
 	id, err := ias_db.InsertDeviceProfile(profile)
 	if err != nil {
@@ -461,7 +455,6 @@ func UpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		ModelNumber            string `json:"model_number"`
 		CommunicationsProtocol string `json:"communications_protocol"`
 		Decoder                string `json:"decoder"`
-		DataMappings           string `json:"data_mappings"`
 		ImageBase64            string `json:"image_base64"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -486,7 +479,6 @@ func UpdateDeviceProfile(w http.ResponseWriter, r *http.Request) {
 		ModelNumber:            req.ModelNumber,
 		CommunicationsProtocol: req.CommunicationsProtocol,
 		Decoder:                req.Decoder,
-		DataMappings:           req.DataMappings,
 	}
 	if err := ias_db.UpdateDeviceProfile(profile); err != nil {
 		slog.Error("Failed to update device profile", "error", err)
