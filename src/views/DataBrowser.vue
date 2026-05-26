@@ -93,7 +93,9 @@
         </Column>
         <Column field="processed_payload" header="Processed Payload">
           <template #body="{ data }">
-            <span class="payload-cell">{{ data.processed_payload || '—' }}</span>
+            <span class="payload-cell" @click="openPayloadDialog(data.processed_payload)">
+              {{ data.processed_payload || '—' }}
+            </span>
           </template>
         </Column>
         <Column field="received_at" header="Received At" />
@@ -103,6 +105,15 @@
     <div v-else-if="devices.length" class="empty-selection">
       Select a device from the dropdown above to browse its data.
     </div>
+
+    <Dialog v-model:visible="payloadDialogVisible" header="Processed Payload" :modal="true" :closable="false" :style="{ width: '600px' }">
+      <div class="modal-content">
+        <pre>{{ selectedPayload }}</pre>
+      </div>
+      <template #footer>
+        <Button label="Close" icon="pi pi-times" @click="payloadDialogVisible = false" class="p-button-text" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -114,6 +125,8 @@ import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { getAllDevices, getDeviceSuccessfulIngest } from '@/api/posts'
 
@@ -125,6 +138,8 @@ const selectedDevice = ref(null)
 const deviceData = ref([])
 const dataLoading = ref(false)
 const fallbackActive = ref(false)
+const payloadDialogVisible = ref(false)
+const selectedPayload = ref('')
 
 const imageSrc = computed(() => {
   if (fallbackActive.value || !selectedDevice.value?.ProfileID) return '/MCS.png'
@@ -133,6 +148,11 @@ const imageSrc = computed(() => {
 
 function onImageError() {
   fallbackActive.value = true
+}
+
+function openPayloadDialog(payload) {
+  selectedPayload.value = payload
+  payloadDialogVisible.value = true
 }
 
 const deviceOptions = computed(() =>
@@ -323,6 +343,15 @@ onMounted(() => {
   white-space: nowrap;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #212121;
+  transition: background-color 0.2s ease;
+}
+
+.payload-cell:hover {
+  background-color: rgba(72, 137, 123, 0.15);
 }
 
 .table-spinner {
@@ -337,5 +366,28 @@ onMounted(() => {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 9999;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.modal-content pre {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #212121;
+  color: #e0e0e0;
+  padding: 1rem;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 500px;
+  overflow-y: auto;
 }
 </style>
