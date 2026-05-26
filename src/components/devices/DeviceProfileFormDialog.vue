@@ -74,7 +74,11 @@ watch(() => props.visible, (isVisible) => {
                 imageBase64.value = props.profile.image_base64;
             }
             dataMappings.value = props.profile.data_mappings
-                ? props.profile.data_mappings.map(m => ({ ...m }))
+                ? JSON.parse(
+                    typeof props.profile.data_mappings === 'string'
+                        ? props.profile.data_mappings
+                        : JSON.stringify(props.profile.data_mappings)
+                  )
                 : [];
         } else {
             form.value = {
@@ -144,7 +148,7 @@ function handleSave() {
         model_number: form.value.model_number,
         communications_protocol: form.value.communications_protocol,
         decoder: form.value.decoder,
-        data_mappings: dataMappings.value
+        data_mappings: JSON.stringify(dataMappings.value)
     };
     if (imageBase64.value) {
         payload.image_base64 = imageBase64.value;
