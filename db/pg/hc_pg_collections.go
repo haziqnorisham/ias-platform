@@ -25,6 +25,7 @@ type HcDeviceProfile struct {
 	ModelNumber            string `db:"model_number"`
 	CommunicationsProtocol string `db:"communications_protocol"`
 	Decoder                string `db:"decoder"`
+	DataMappings           string `db:"data_mappings"`
 }
 
 // Ingest status constants.
@@ -104,7 +105,8 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			manufacturer VARCHAR(100) NOT NULL DEFAULT '',
 			model_number VARCHAR(100) NOT NULL DEFAULT '',
 			communications_protocol VARCHAR(50) NOT NULL DEFAULT '',
-			decoder TEXT DEFAULT ''
+			decoder TEXT DEFAULT '',
+			data_mappings JSONB DEFAULT '[]'::jsonb
 		);`,
 		`CREATE TABLE IF NOT EXISTS hc_devices (
 			id VARCHAR(50) PRIMARY KEY,
@@ -318,16 +320,16 @@ func (p *PostgresStorage) DeleteDevice(deviceID string) error {
 
 // InsertDeviceProfile stores a new device profile into hc_device_profiles.
 func (p *PostgresStorage) InsertDeviceProfile(profile HcDeviceProfile) (int, error) {
-	query := `INSERT INTO hc_device_profiles (profile_name, manufacturer, model_number, communications_protocol, decoder)
-		VALUES ($1, $2, $3, $4, $5) RETURNING profile_id;`
+	query := `INSERT INTO hc_device_profiles (profile_name, manufacturer, model_number, communications_protocol, decoder, data_mappings)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING profile_id;`
 	var id int
-	err := p.DB.QueryRow(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder).Scan(&id)
+	err := p.DB.QueryRow(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder, profile.DataMappings).Scan(&id)
 	return id, err
 }
 
 // GetAllDeviceProfiles retrieves all device profiles.
 func (p *PostgresStorage) GetAllDeviceProfiles() ([]HcDeviceProfile, error) {
-	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder FROM hc_device_profiles ORDER BY profile_id;`
+	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder, data_mappings FROM hc_device_profiles ORDER BY profile_id;`
 	rows, err := p.DB.Query(query)
 	if err != nil {
 		return nil, err
@@ -337,7 +339,7 @@ func (p *PostgresStorage) GetAllDeviceProfiles() ([]HcDeviceProfile, error) {
 	var profiles []HcDeviceProfile
 	for rows.Next() {
 		var pr HcDeviceProfile
-		if err := rows.Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder); err != nil {
+		if err := rows.Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder, &pr.DataMappings); err != nil {
 			return nil, err
 		}
 		profiles = append(profiles, pr)
@@ -347,9 +349,9 @@ func (p *PostgresStorage) GetAllDeviceProfiles() ([]HcDeviceProfile, error) {
 
 // GetDeviceProfileByID retrieves a single device profile by its profile_id.
 func (p *PostgresStorage) GetDeviceProfileByID(profileID int) (*HcDeviceProfile, error) {
-	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder FROM hc_device_profiles WHERE profile_id = $1;`
+	query := `SELECT profile_id, profile_name, manufacturer, model_number, communications_protocol, decoder, data_mappings FROM hc_device_profiles WHERE profile_id = $1;`
 	var pr HcDeviceProfile
-	err := p.DB.QueryRow(query, profileID).Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder)
+	err := p.DB.QueryRow(query, profileID).Scan(&pr.ProfileID, &pr.ProfileName, &pr.Manufacturer, &pr.ModelNumber, &pr.CommunicationsProtocol, &pr.Decoder, &pr.DataMappings)
 	if err != nil {
 		return nil, err
 	}
@@ -358,8 +360,8 @@ func (p *PostgresStorage) GetDeviceProfileByID(profileID int) (*HcDeviceProfile,
 
 // UpdateDeviceProfile updates an existing device profile.
 func (p *PostgresStorage) UpdateDeviceProfile(profile HcDeviceProfile) error {
-	query := `UPDATE hc_device_profiles SET profile_name=$1, manufacturer=$2, model_number=$3, communications_protocol=$4, decoder=$5 WHERE profile_id=$6;`
-	_, err := p.DB.Exec(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder, profile.ProfileID)
+	query := `UPDATE hc_device_profiles SET profile_name=$1, manufacturer=$2, model_number=$3, communications_protocol=$4, decoder=$5, data_mappings=$6 WHERE profile_id=$7;`
+	_, err := p.DB.Exec(query, profile.ProfileName, profile.Manufacturer, profile.ModelNumber, profile.CommunicationsProtocol, profile.Decoder, profile.DataMappings, profile.ProfileID)
 	return err
 }
 
