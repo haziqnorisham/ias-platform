@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	redis_lib "github.com/redis/go-redis/v9"
 )
 
 var IsRunning = false
 var currentServer *http.Server
 
-func SetupRoutes(rdb *redis_lib.Client) {
+func SetupRoutes() {
 	http.HandleFunc("/", homeHandler)
 	http.Handle("/api/image/", http.StripPrefix("/api/image/", http.FileServer(http.Dir("public"))))
 
@@ -86,21 +84,6 @@ func SetupRoutes(rdb *redis_lib.Client) {
 			DeleteDashboardHandler(w, r)
 		})
 	}
-	http.HandleFunc("/GET_ALL_TREE_SENSOR", func(w http.ResponseWriter, r *http.Request) {
-		getAllTreeSensorHandler(w, r, rdb)
-	})
-	http.HandleFunc("/GET_TREE_SENSOR_BATTERY", func(w http.ResponseWriter, r *http.Request) {
-		getTreeSensorBatteryHandler(w, r, rdb)
-	})
-	http.HandleFunc("/GET_TREE_SENSOR_ANGLE", func(w http.ResponseWriter, r *http.Request) {
-		getTreeSensorAngleHandler(w, r, rdb)
-	})
-	http.HandleFunc("/GET_TREE_SENSOR_MAGNITUDE_MIN", func(w http.ResponseWriter, r *http.Request) {
-		getTreeSensorMagnitudeMinHandler(w, r, rdb)
-	})
-	http.HandleFunc("/GET_TREE_SENSOR_MAGNITUDE_MAX", func(w http.ResponseWriter, r *http.Request) {
-		getTreeSensorMagnitudeMaxHandler(w, r, rdb)
-	})
 }
 func StartServer() {
 	currentServer = &http.Server{Addr: ":" + os.Getenv("HTTP_SERVER_PORT")}

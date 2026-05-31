@@ -1,22 +1,17 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	influxdb_utils "ias/automation/db/influxdb"
 	ias_pg "ias/automation/db/pg"
-	redis_utils "ias/automation/db/redis"
 	ingest_http "ias/automation/ingest/http"
 	ingest_mqtt "ias/automation/ingest/mqtt"
 	"ias/automation/worker"
 
 	"github.com/joho/godotenv"
-	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -24,12 +19,8 @@ func main() {
 	loadEnv()
 	initSharedPool()
 	defer ias_pg.CloseSharedPool()
-	rdb := initRedis()
-	defer rdb.Close()
-	initInfluxDB()
-	buildSTICacheIfEnabled(rdb)
 	setupHCBackendIfEnabled()
-	startHTTPServerIfEnabled(rdb)
+	startHTTPServerIfEnabled()
 	startMQTTIfEnabled()
 	sched := startWorkerIfEnabled()
 	waitForShutdown(sched)
@@ -60,37 +51,6 @@ func initSharedPool() {
 	slog.Info("PostgreSQL shared connection pool initialized", "process", "main")
 }
 
-func initRedis() *redis.Client {
-	slog.Info("Initializing Redis connection", "process", "main")
-	rdb := redis_utils.NewRedisClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		slog.Error("Redis ping failed", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Redis connection established", "process", "main")
-	return rdb
-}
-
-func initInfluxDB() {
-	slog.Info("Initializing InfluxDB connection", "process", "main")
-	if err := influxdb_utils.InitInfluxService(os.Getenv("INFLUXDB_ORG")); err != nil {
-		slog.Error("Failed to initialize InfluxDB", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("InfluxDB connection established", "process", "main")
-}
-
-func buildSTICacheIfEnabled(rdb *redis.Client) {
-	if os.Getenv("STI_AUTOMATION_ENABLE") != "true" {
-		return
-	}
-	slog.Info("Building InfluxDB Cache for STI", "process", "main")
-	ingest_http.BuildSTICache(rdb)
-	slog.Info("InfluxDB Cache built successfully", "process", "main")
-}
-
 func setupHCBackendIfEnabled() {
 	if os.Getenv("IAS_HC_BACKEND_ENABLE") != "true" {
 		slog.Info("IAS HC Backend Server is disabled", "process", "main")
@@ -103,12 +63,12 @@ func setupHCBackendIfEnabled() {
 	}
 }
 
-func startHTTPServerIfEnabled(rdb *redis.Client) {
+func startHTTPServerIfEnabled() {
 	if os.Getenv("HTTP_SERVER_AUTOSTART") != "true" {
 		return
 	}
 	slog.Info("Starting HTTP server", "process", "main")
-	ingest_http.SetupRoutes(rdb)
+	ingest_http.SetupRoutes()
 	ingest_http.StartServer()
 }
 

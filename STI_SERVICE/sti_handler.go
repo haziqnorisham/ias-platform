@@ -1,21 +1,28 @@
-package http
+package main
 
 import (
 	"context"
 	"encoding/json"
-	influxdb_utils "ias/automation/db/influxdb"
+	"errors"
+	influxdb_utils "sti_service/db/influxdb"
 
-	ias_pg "ias/automation/db/pg"
+	ias_pg "sti_service/db/pg"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	redis_lib "github.com/redis/go-redis/v9"
 
 	"github.com/influxdata/influxdb-client-go/v2/api"
+)
+
+var (
+	cacheRebuildMu  sync.Mutex
+	cacheRebuilding bool
 )
 
 func getAllTreeSensorHandler(w http.ResponseWriter, r *http.Request, rdb *redis_lib.Client) {
@@ -36,6 +43,13 @@ func getAllTreeSensor(rdb *redis_lib.Client, c context.Context) []byte {
 		// Cache hit, return cached data
 		return_val := []byte(cachedData)
 		return return_val
+	}
+
+	cacheRebuildMu.Lock()
+	rebuilding := cacheRebuilding
+	cacheRebuildMu.Unlock()
+	if rebuilding {
+		return []byte(`{"error":"cache is building, please try again"}`)
 	}
 
 	// Get sensors data if cache miss
@@ -214,7 +228,21 @@ func createCacheFromInfluxDB(rdb *redis_lib.Client, influx_result *api.QueryTabl
 	}
 }
 
-func BuildSTICache(rdb *redis_lib.Client) {
+func BuildSTICache(rdb *redis_lib.Client) bool {
+	cacheRebuildMu.Lock()
+	if cacheRebuilding {
+		cacheRebuildMu.Unlock()
+		return false
+	}
+	cacheRebuilding = true
+	cacheRebuildMu.Unlock()
+
+	defer func() {
+		cacheRebuildMu.Lock()
+		cacheRebuilding = false
+		cacheRebuildMu.Unlock()
+	}()
+
 	// Get All Tree Sensor Data
 	var sensor_array []ias_pg.PpjTreeSensor
 	c := context.Background()
@@ -249,6 +277,7 @@ func BuildSTICache(rdb *redis_lib.Client) {
 		createCacheFromInfluxDB(rdb, influx_result, c, "magnitude_min:")
 	}
 
+	return true
 }
 
 func getTreeSensorBatteryFromCache(rdb *redis_lib.Client, c context.Context, devEUI string) ([]byte, error) {
@@ -259,7 +288,9 @@ func getTreeSensorBatteryFromCache(rdb *redis_lib.Client, c context.Context, dev
 	}
 
 	// If cache miss, trigger cache re-build
-	BuildSTICache(rdb)
+	if !BuildSTICache(rdb) {
+		return nil, errors.New("cache is building, please try again")
+	}
 
 	// Try to get from cache again after rebuild
 	cachedData, err = rdb.Get(c, "battery:"+devEUI).Result()
@@ -278,7 +309,9 @@ func getTreeSensorAngleFromCache(rdb *redis_lib.Client, c context.Context, devEU
 	}
 
 	// If cache miss, trigger cache re-build
-	BuildSTICache(rdb)
+	if !BuildSTICache(rdb) {
+		return nil, errors.New("cache is building, please try again")
+	}
 
 	// Try to get from cache again after rebuild
 	cachedData, err = rdb.Get(c, "angle:"+devEUI).Result()
