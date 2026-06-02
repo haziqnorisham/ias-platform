@@ -33,3 +33,6 @@ public/
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Personal progress tracker
+TODO.md
