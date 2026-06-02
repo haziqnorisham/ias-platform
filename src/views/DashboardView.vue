@@ -31,7 +31,13 @@
         :static="true"
       >
         <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : item.type === 'barchart' ? item.chartTitle : item.type === 'table' ? item.tableTitle : item.type === 'text' ? item.textTitle : item.type === 'stream' ? 'Live Stream' : ''">
-          <MetricCard v-if="item.type === 'card'" :title="item.cardTitle" :value="item.cardValue" />
+          <MetricCard
+            v-if="item.type === 'card'"
+            :title="item.cardTitle"
+            :value="widgetData[item.i]?.value ?? item.cardValue"
+            :loading="widgetData[item.i]?.loading ?? false"
+            :error="widgetData[item.i]?.error ?? false"
+          />
           <BarChartWidget v-else-if="item.type === 'barchart'" :title="item.chartTitle" />
           <TableWidget v-else-if="item.type === 'table'" :title="item.tableTitle" />
           <TextWidget v-else-if="item.type === 'text'" :title="item.textTitle" :text="item.textContent" />
@@ -43,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
 import BlockUI from 'primevue/blockui'
@@ -54,11 +60,89 @@ import BarChartWidget from '@/components/dashboards/charts/BarChartWidget.vue'
 import TableWidget from '@/components/dashboards/charts/TableWidget.vue'
 import TextWidget from '@/components/dashboards/charts/TextWidget.vue'
 import StreamWidget from '@/components/widgets/StreamWidget.vue'
-import { getDashboard } from '@/api/posts'
+import { getDashboard, getDashboardMetric } from '@/api/posts'
 
 const route = useRoute()
 const loading = ref(false)
 const layout = ref([])
+const widgetData = ref({})
+
+let pollInterval = null
+
+function buildMetricsPayload() {
+  const metrics = []
+  for (const item of layout.value) {
+    if (item.type === 'card' && item.config?.query?.deviceID) {
+      metrics.push({
+        deviceID: item.config.query.deviceID,
+        column_name: item.config.query.column_name || '',
+        data_type: item.config.query.data_type || 'number'
+      })
+    }
+  }
+  return { metrics }
+}
+
+function formatValue(value, dataType) {
+  if (dataType === 'number' && typeof value === 'number') {
+    return value % 1 === 0 ? String(value) : value.toFixed(1)
+  }
+  return String(value ?? '\u2014')
+}
+
+function lookupResult(results, deviceID, columnName) {
+  if (!results) return undefined
+  for (const m of results) {
+    if (m.deviceID === deviceID && m.column_name === columnName) {
+      return m.value
+    }
+  }
+  return undefined
+}
+
+async function fetchWidgetData() {
+  const payload = buildMetricsPayload()
+  if (!payload.metrics.length) return
+
+  for (const item of layout.value) {
+    if (item.type === 'card' && item.config?.query?.deviceID) {
+      widgetData.value = {
+        ...widgetData.value,
+        [item.i]: { ...widgetData.value[item.i], loading: true, error: false }
+      }
+    }
+  }
+
+  try {
+    const result = await getDashboardMetric(payload)
+    const metrics = result?.metrics || []
+
+    for (const item of layout.value) {
+      if (item.type === 'card' && item.config?.query?.deviceID) {
+        const q = item.config.query
+        const liveValue = lookupResult(metrics, q.deviceID, q.column_name)
+        const fallback = widgetData.value[item.i]?.value ?? item.cardValue
+        widgetData.value = {
+          ...widgetData.value,
+          [item.i]: {
+            value: liveValue !== undefined ? formatValue(liveValue, q.data_type) : fallback,
+            loading: false,
+            error: liveValue === undefined
+          }
+        }
+      }
+    }
+  } catch {
+    for (const item of layout.value) {
+      if (item.type === 'card' && item.config?.query?.deviceID) {
+        widgetData.value = {
+          ...widgetData.value,
+          [item.i]: { ...widgetData.value[item.i], loading: false, error: true }
+        }
+      }
+    }
+  }
+}
 
 onMounted(async () => {
   const idParam = route.query.id
@@ -75,6 +159,16 @@ onMounted(async () => {
     console.error('Failed to load dashboard:', e)
   } finally {
     loading.value = false
+  }
+
+  fetchWidgetData()
+  pollInterval = setInterval(fetchWidgetData, 5000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
   }
 })
 </script>

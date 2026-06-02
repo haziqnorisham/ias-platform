@@ -43,7 +43,7 @@
       header="Edit Widget"
       :modal="true"
       :closable="false"
-      :style="{ width: '420px' }"
+      :style="{ width: '480px' }"
       class="edit-dialog"
     >
       <div class="edit-form">
@@ -76,14 +76,14 @@
             <Select v-model="queryDeviceId" :options="deviceOptions" optionLabel="label" optionValue="value" placeholder="Select device" size="small" class="form-input" />
           </div>
 
-          <div v-if="showMetricKey" class="edit-field">
-            <label>Metric key</label>
-            <InputText v-model="queryMetricKey" placeholder="temperature" size="small" class="form-input" />
+          <div class="edit-field" style="grid-column: 1 / -1">
+            <label>Column name</label>
+            <InputText v-model="queryColumnName" placeholder="object.temperature" size="small" class="form-input" />
           </div>
 
           <div class="edit-field">
-            <label>Aggregate</label>
-            <Select v-model="queryAggregate" :options="aggregateOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
+            <label>Data type</label>
+            <Select v-model="queryDataType" :options="dataTypeOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
           </div>
         </div>
       </template>
@@ -126,20 +126,14 @@ const draftValue = ref('')
 
 const dynamicDataEnabled = ref(false)
 const queryDeviceId = ref('')
-const queryMetricKey = ref('')
-const queryAggregate = ref('avg')
+const queryColumnName = ref('')
+const queryDataType = ref('number')
 const deviceOptions = ref([])
 
-const showMetricKey = computed(() => queryAggregate.value !== 'count')
-
-const aggregateOptions = [
-  { label: 'Count', value: 'count' },
-  { label: 'Sum', value: 'sum' },
-  { label: 'Average', value: 'avg' },
-  { label: 'Min', value: 'min' },
-  { label: 'Max', value: 'max' },
-  { label: 'First', value: 'first' },
-  { label: 'Last', value: 'last' }
+const dataTypeOptions = [
+  { label: 'Number', value: 'number' },
+  { label: 'String', value: 'string' },
+  { label: 'Boolean', value: 'boolean' }
 ]
 
 const widgetTitle = computed(() => {
@@ -195,16 +189,16 @@ function startEdit() {
     deviceOptions.value = props.devices
 
     const q = w.config?.query
-    if (q) {
+    if (q && q.deviceID) {
       dynamicDataEnabled.value = true
-      queryDeviceId.value = q.device_id || ''
-      queryMetricKey.value = q.metric_key || ''
-      queryAggregate.value = q.aggregate || 'avg'
+      queryDeviceId.value = q.deviceID || ''
+      queryColumnName.value = q.column_name || ''
+      queryDataType.value = q.data_type || 'number'
     } else {
       dynamicDataEnabled.value = false
       queryDeviceId.value = ''
-      queryMetricKey.value = ''
-      queryAggregate.value = 'avg'
+      queryColumnName.value = ''
+      queryDataType.value = 'number'
     }
   }
 
@@ -236,12 +230,10 @@ function saveTitle() {
   if (props.widget.type === 'card' && dynamicDataEnabled.value && queryDeviceId.value) {
     updatePayload.config = {
       query: {
-        device_id: queryDeviceId.value,
-        aggregate: queryAggregate.value
+        deviceID: queryDeviceId.value,
+        column_name: queryColumnName.value.trim(),
+        data_type: queryDataType.value
       }
-    }
-    if (queryAggregate.value !== 'count') {
-      updatePayload.config.query.metric_key = queryMetricKey.value.trim()
     }
   }
 

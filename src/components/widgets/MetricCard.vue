@@ -19,6 +19,14 @@ defineProps({
   hideTitle: {
     type: Boolean,
     default: false
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  error: {
+    type: Boolean,
+    default: false
   }
 });
 </script>
@@ -26,7 +34,10 @@ defineProps({
 <template>
   <div class="metric-card">
     <div v-if="!hideTitle && title" class="metric-card__title">{{ title }}</div>
-    <div class="metric-card__value">{{ value }}</div>
+    <div class="metric-card__value" :class="{ 'metric-card__value--loading': loading, 'metric-card__value--error': error }">
+      {{ value }}
+      <i v-if="error" class="pi pi-exclamation-triangle error-icon"></i>
+    </div>
     <div v-if="subtitle" class="metric-card__subtitle">{{ subtitle }}</div>
   </div>
 </template>
@@ -59,6 +70,20 @@ defineProps({
   font-weight: bold;
   color: var(--mc-value-color);
   line-height: 1.2;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metric-card__value--loading {
+  opacity: 0.5;
+}
+
+.metric-card__value--error .error-icon {
+  font-size: 0.85rem;
+  color: #f44336;
+  flex-shrink: 0;
 }
 
 .metric-card__subtitle {
