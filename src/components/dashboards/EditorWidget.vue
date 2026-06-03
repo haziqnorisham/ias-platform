@@ -43,10 +43,11 @@
       header="Edit Widget"
       :modal="true"
       :closable="false"
-      :style="{ width: '480px' }"
+      :style="{ width: '600px' }"
       class="edit-dialog"
     >
-      <div class="edit-form">
+      <div class="edit-section">
+        <div class="edit-section-label">Display</div>
         <div class="edit-field">
           <label for="widgetTitle">Title</label>
           <InputText id="widgetTitle" v-model="draftTitle" placeholder="Widget title" class="form-input" @keydown.enter="saveTitle" />
@@ -63,27 +64,27 @@
 
       <template v-if="widget.type === 'card'">
         <hr class="edit-divider" />
-        <div class="edit-section-label">Data Source</div>
+        <div class="edit-section">
+          <div class="edit-section-label">Data Source</div>
 
-        <div class="toggle-row">
-          <ToggleSwitch v-model="dynamicDataEnabled" />
-          <span class="toggle-label">Dynamic Data</span>
-        </div>
-
-        <div v-if="dynamicDataEnabled" class="query-grid">
-          <div class="edit-field">
-            <label>Device</label>
-            <Select v-model="queryDeviceId" :options="deviceOptions" optionLabel="label" optionValue="value" placeholder="Select device" size="small" class="form-input" />
+          <div class="toggle-row">
+            <ToggleSwitch v-model="dynamicDataEnabled" />
+            <span class="toggle-label">Dynamic Data</span>
           </div>
 
-          <div class="edit-field" style="grid-column: 1 / -1">
-            <label>Column name</label>
-            <InputText v-model="queryColumnName" placeholder="object.temperature" size="small" class="form-input" />
-          </div>
-
-          <div class="edit-field">
-            <label>Data type</label>
-            <Select v-model="queryDataType" :options="dataTypeOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
+          <div v-if="dynamicDataEnabled" class="query-grid">
+            <div class="edit-field query-field-device">
+              <label>Device</label>
+              <Select v-model="queryDeviceId" :options="deviceOptions" optionLabel="label" optionValue="value" placeholder="Select device" size="small" class="form-input" />
+            </div>
+            <div class="edit-field query-field-column">
+              <label>Column name</label>
+              <InputText v-model="queryColumnName" placeholder="object.temperature" size="small" class="form-input" />
+            </div>
+            <div class="edit-field query-field-type">
+              <label>Data type</label>
+              <Select v-model="queryDataType" :options="dataTypeOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
+            </div>
           </div>
         </div>
       </template>
@@ -341,10 +342,18 @@ function saveTitle() {
   padding: 1.5rem;
 }
 
-.edit-form {
+.edit-section {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.edit-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .edit-field {
@@ -366,21 +375,13 @@ function saveTitle() {
 .edit-divider {
   border: none;
   border-top: 1px solid #212121;
-  margin: 1.25rem 0 0.75rem 0;
-}
-
-.edit-section-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #a0a0a0;
-  margin-bottom: 0.75rem;
+  margin: 1.5rem 0;
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
 }
 
 .toggle-label {
@@ -392,5 +393,17 @@ function saveTitle() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
+}
+
+.query-field-device {
+  grid-column: 1 / -1;
+}
+
+.query-field-column {
+  /* occupies first column naturally */
+}
+
+.query-field-type {
+  /* occupies second column naturally */
 }
 </style>
