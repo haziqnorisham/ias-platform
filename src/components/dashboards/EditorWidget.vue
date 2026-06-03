@@ -52,7 +52,7 @@
           <label for="widgetTitle">Title</label>
           <InputText id="widgetTitle" v-model="draftTitle" placeholder="Widget title" class="form-input" @keydown.enter="saveTitle" />
         </div>
-        <div v-if="widget.type === 'card' && !dynamicDataEnabled" class="edit-field">
+        <div v-if="widget.type === 'card' && !widgetQueryConfig" class="edit-field">
           <label for="widgetValue">Value</label>
           <InputText id="widgetValue" v-model="draftValue" placeholder="Widget value" class="form-input" @keydown.enter="saveTitle" />
         </div>
@@ -62,31 +62,13 @@
         </div>
       </div>
 
-      <template v-if="widget.type === 'card'">
+      <template v-if="widget.type === 'card' || widget.type === 'barchart'">
         <hr class="edit-divider" />
-        <div class="edit-section">
-          <div class="edit-section-label">Data Source</div>
-
-          <div class="toggle-row">
-            <ToggleSwitch v-model="dynamicDataEnabled" />
-            <span class="toggle-label">Dynamic Data</span>
-          </div>
-
-          <div v-if="dynamicDataEnabled" class="query-grid">
-            <div class="edit-field query-field-device">
-              <label>Device</label>
-              <Select v-model="queryDeviceId" :options="deviceOptions" optionLabel="label" optionValue="value" placeholder="Select device" size="small" class="form-input" />
-            </div>
-            <div class="edit-field query-field-column">
-              <label>Column name</label>
-              <InputText v-model="queryColumnName" placeholder="object.temperature" size="small" class="form-input" />
-            </div>
-            <div class="edit-field query-field-type">
-              <label>Data type</label>
-              <Select v-model="queryDataType" :options="dataTypeOptions" optionLabel="label" optionValue="value" size="small" class="form-input" />
-            </div>
-          </div>
-        </div>
+        <DataSourceConfig
+          v-model="widgetQueryConfig"
+          :widget-type="widget.type"
+          :devices="deviceOptions"
+        />
       </template>
       <template #footer>
         <Button label="Cancel" icon="pi pi-times" @click="editing = false" class="p-button-text" />
@@ -101,12 +83,11 @@ import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
-import Select from 'primevue/select'
-import ToggleSwitch from 'primevue/toggleswitch'
 import MetricCard from '../widgets/MetricCard.vue'
 import BarChartWidget from './charts/BarChartWidget.vue'
 import TableWidget from './charts/TableWidget.vue'
 import TextWidget from './charts/TextWidget.vue'
+import DataSourceConfig from './DataSourceConfig.vue'
 
 const props = defineProps({
   widget: {
@@ -124,18 +105,8 @@ const emit = defineEmits(['delete', 'update'])
 const editing = ref(false)
 const draftTitle = ref('')
 const draftValue = ref('')
-
-const dynamicDataEnabled = ref(false)
-const queryDeviceId = ref('')
-const queryColumnName = ref('')
-const queryDataType = ref('number')
+const widgetQueryConfig = ref(null)
 const deviceOptions = ref([])
-
-const dataTypeOptions = [
-  { label: 'Number', value: 'number' },
-  { label: 'String', value: 'string' },
-  { label: 'Boolean', value: 'boolean' }
-]
 
 const widgetTitle = computed(() => {
   switch (props.widget.type) {
@@ -186,21 +157,9 @@ function startEdit() {
       draftValue.value = w.cardValue || ''
   }
 
-  if (w.type === 'card') {
+  if (w.type === 'card' || w.type === 'barchart') {
     deviceOptions.value = props.devices
-
-    const q = w.config?.query
-    if (q && q.deviceID) {
-      dynamicDataEnabled.value = true
-      queryDeviceId.value = q.deviceID || ''
-      queryColumnName.value = q.column_name || ''
-      queryDataType.value = q.data_type || 'number'
-    } else {
-      dynamicDataEnabled.value = false
-      queryDeviceId.value = ''
-      queryColumnName.value = ''
-      queryDataType.value = 'number'
-    }
+    widgetQueryConfig.value = w.config?.query ?? null
   }
 
   editing.value = true
@@ -228,14 +187,8 @@ function saveTitle() {
       break
   }
 
-  if (props.widget.type === 'card' && dynamicDataEnabled.value && queryDeviceId.value) {
-    updatePayload.config = {
-      query: {
-        deviceID: queryDeviceId.value,
-        column_name: queryColumnName.value.trim(),
-        data_type: queryDataType.value
-      }
-    }
+  if (widgetQueryConfig.value && widgetQueryConfig.value.deviceID) {
+    updatePayload.config = { query: { ...widgetQueryConfig.value } }
   }
 
   if (Object.keys(updatePayload).length > 1) {
@@ -376,34 +329,5 @@ function saveTitle() {
   border: none;
   border-top: 1px solid #212121;
   margin: 1.5rem 0;
-}
-
-.toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.toggle-label {
-  font-size: 0.82rem;
-  color: #ccc;
-}
-
-.query-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.query-field-device {
-  grid-column: 1 / -1;
-}
-
-.query-field-column {
-  /* occupies first column naturally */
-}
-
-.query-field-type {
-  /* occupies second column naturally */
 }
 </style>
