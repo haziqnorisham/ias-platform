@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 // Non Http Utility functions related to HC schema and handlers
@@ -920,6 +921,136 @@ func DeleteDashboardHandler(w http.ResponseWriter, r *http.Request) {
 		Status: "deleted",
 	}
 	jsonData, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+// extractJSONValue parses a JSON string and traverses a dot-separated path to return the leaf value.
+// Returns nil if the JSON is invalid or any key in the path is missing.
+func extractJSONValue(payloadJSON string, path string) interface{} {
+	if payloadJSON == "" {
+		return nil
+	}
+
+	var root interface{}
+	if err := json.Unmarshal([]byte(payloadJSON), &root); err != nil {
+		return nil
+	}
+
+	keys := strings.Split(path, ".")
+	current := root
+	for _, key := range keys {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		val, exists := m[key]
+		if !exists {
+			return nil
+		}
+		current = val
+	}
+	return current
+}
+
+// GetDashboardMetric handles POST /api/get_dashboard_metric
+// Body: { metrics: [{ deviceID, column_name, data_type }] }
+// Returns the latest metric values extracted from processed data for the requested devices.
+func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	type MetricRequest struct {
+		DeviceID   string `json:"deviceID"`
+		ColumnName string `json:"column_name"`
+		DataType   string `json:"data_type"`
+	}
+
+	var req struct {
+		Metrics []MetricRequest `json:"metrics"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Metrics) == 0 {
+		http.Error(w, `{"error":"metrics array is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	const maxMetrics = 200
+	if len(req.Metrics) > maxMetrics {
+		http.Error(w, fmt.Sprintf(`{"error":"maximum %d metrics per request"}`, maxMetrics), http.StatusBadRequest)
+		return
+	}
+
+	for _, m := range req.Metrics {
+		if m.DeviceID == "" || m.ColumnName == "" {
+			http.Error(w, `{"error":"each metric requires deviceID and column_name"}`, http.StatusBadRequest)
+			return
+		}
+	}
+
+	deviceIDSet := make(map[string]bool, len(req.Metrics))
+	for _, m := range req.Metrics {
+		deviceIDSet[m.DeviceID] = true
+	}
+	deviceIDs := make([]string, 0, len(deviceIDSet))
+	for id := range deviceIDSet {
+		deviceIDs = append(deviceIDs, id)
+	}
+
+	slog.Info("Querying dashboard metrics",
+		"metric_count", len(req.Metrics),
+		"device_count", len(deviceIDs),
+		"process", "hc_handler_main",
+	)
+
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	payloads, err := ias_db.GetLatestProcessedPayloadByDeviceIDs(deviceIDs)
+	if err != nil {
+		slog.Error("Failed to query dashboard metrics", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to query metrics"}`, http.StatusInternalServerError)
+		return
+	}
+
+	type MetricResponse struct {
+		DeviceID    string      `json:"deviceID"`
+		ColumnName  string      `json:"column_name"`
+		DataType    string      `json:"data_type"`
+		Value       interface{} `json:"value"`
+		ProcessedAt *time.Time  `json:"processed_at"`
+	}
+
+	results := make([]MetricResponse, len(req.Metrics))
+	for i, m := range req.Metrics {
+		results[i] = MetricResponse{
+			DeviceID:   m.DeviceID,
+			ColumnName: m.ColumnName,
+			DataType:   m.DataType,
+		}
+		if latest, ok := payloads[m.DeviceID]; ok {
+			results[i].Value = extractJSONValue(latest.ProcessedPayload, m.ColumnName)
+			results[i].ProcessedAt = &latest.ProcessedAt
+		}
+	}
+
+	resp := struct {
+		Metrics []MetricResponse `json:"metrics"`
+	}{Metrics: results}
+
+	jsonData, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("Failed to marshal dashboard metrics", "error", err, "process", "hc_handler_main")
+		http.Error(w, `{"error":"failed to marshal metrics"}`, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)

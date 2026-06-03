@@ -83,6 +83,9 @@ func SetupRoutes() {
 		http.HandleFunc("/api/delete_dashboard", func(w http.ResponseWriter, r *http.Request) {
 			DeleteDashboardHandler(w, r)
 		})
+		http.HandleFunc("/api/get_dashboard_metric", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboardMetric(w, r)
+		})
 	}
 }
 func StartServer() {
