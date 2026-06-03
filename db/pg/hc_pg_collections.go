@@ -44,8 +44,9 @@ type HcProcessedData struct {
 	ProfileID        int       `db:"profile_id"`
 	ProcessedPayload string    `db:"processed_payload"`
 	Success          bool      `db:"success"`
-	ErrorMessage     string    `db:"error_message"`
-	ProcessedAt      time.Time `db:"processed_at"`
+	ErrorMessage     string     `db:"error_message"`
+	ProcessedAt      time.Time  `db:"processed_at"`
+	MeasuredAt       *time.Time `db:"measured_at"`
 }
 
 // HcRawIngest represents a raw ingest message stored in PostgreSQL.
@@ -126,7 +127,8 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			processed_payload JSONB DEFAULT '{}',
 			success BOOLEAN NOT NULL DEFAULT true,
 			error_message TEXT DEFAULT '',
-			processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			measured_at TIMESTAMPTZ
 		);`,
 		`CREATE TABLE IF NOT EXISTS hc_dashboards (
 			id SERIAL PRIMARY KEY,
@@ -143,6 +145,9 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
+		`CREATE INDEX IF NOT EXISTS idx_processed_data_device_latest
+		   ON hc_processed_data (device_id, processed_at DESC)
+		   WHERE success = true;`,
 	}
 
 	for _, q := range queries {
@@ -437,7 +442,7 @@ func (p *PostgresStorage) QueryProcessedData(limit int, offset int, sortByID str
 		sortByID = "desc"
 	}
 
-	query := `SELECT id, raw_message_id, device_id, profile_id, processed_payload, success, error_message, processed_at FROM hc_processed_data`
+	query := `SELECT id, raw_message_id, device_id, profile_id, processed_payload, success, error_message, processed_at, measured_at FROM hc_processed_data`
 	var conditions []string
 	var args []interface{}
 	argIdx := 1
@@ -473,7 +478,7 @@ func (p *PostgresStorage) QueryProcessedData(limit int, offset int, sortByID str
 	var records []HcProcessedData
 	for rows.Next() {
 		var r HcProcessedData
-		if err := rows.Scan(&r.ID, &r.RawMessageID, &r.DeviceID, &r.ProfileID, &r.ProcessedPayload, &r.Success, &r.ErrorMessage, &r.ProcessedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.RawMessageID, &r.DeviceID, &r.ProfileID, &r.ProcessedPayload, &r.Success, &r.ErrorMessage, &r.ProcessedAt, &r.MeasuredAt); err != nil {
 			return nil, err
 		}
 		records = append(records, r)
@@ -618,4 +623,47 @@ func (p *PostgresStorage) GetSuccessfulIngestByDeviceID(deviceID string) ([]HcDe
 		results = append(results, r)
 	}
 	return results, rows.Err()
+}
+
+// LatestPayload holds the most recent processed payload and its timestamp for a device.
+type LatestPayload struct {
+	ProcessedPayload string
+	ProcessedAt      time.Time
+}
+
+// GetLatestProcessedPayloadByDeviceIDs returns the latest successfully processed payload
+// for each device in the provided list. Devices with no processed data are omitted from the result.
+func (p *PostgresStorage) GetLatestProcessedPayloadByDeviceIDs(deviceIDs []string) (map[string]LatestPayload, error) {
+	if len(deviceIDs) == 0 {
+		return map[string]LatestPayload{}, nil
+	}
+
+	placeholders := make([]string, len(deviceIDs))
+	args := make([]interface{}, len(deviceIDs))
+	for i, id := range deviceIDs {
+		placeholders[i] = `$` + strconv.Itoa(i+1)
+		args[i] = id
+	}
+
+	query := `SELECT DISTINCT ON (device_id) device_id, processed_payload, processed_at
+		FROM hc_processed_data
+		WHERE device_id IN (` + strings.Join(placeholders, `, `) + `) AND success = true
+		ORDER BY device_id, processed_at DESC`
+
+	rows, err := p.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]LatestPayload)
+	for rows.Next() {
+		var deviceID string
+		var lp LatestPayload
+		if err := rows.Scan(&deviceID, &lp.ProcessedPayload, &lp.ProcessedAt); err != nil {
+			return nil, err
+		}
+		result[deviceID] = lp
+	}
+	return result, rows.Err()
 }
