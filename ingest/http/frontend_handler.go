@@ -2,6 +2,7 @@ package http
 
 import (
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"strings"
 )
@@ -10,6 +11,13 @@ var FrontendFS fs.FS
 
 func mountFrontend() {
 	if FrontendFS == nil {
+		http.HandleFunc("/", homeHandler)
+		return
+	}
+
+	indexHTML, err := fs.ReadFile(FrontendFS, "index.html")
+	if err != nil {
+		slog.Error("Failed to read embedded index.html", "error", err)
 		http.HandleFunc("/", homeHandler)
 		return
 	}
@@ -24,13 +32,19 @@ func mountFrontend() {
 			return
 		}
 
-		_, err := fs.Stat(FrontendFS, strings.TrimPrefix(path, "/"))
-		if err == nil {
-			fileServer.ServeHTTP(w, r)
-			return
+		fsPath := strings.TrimPrefix(path, "/")
+		if fsPath == "" {
+			fsPath = "index.html"
 		}
 
-		r.URL.Path = "/index.html"
-		fileServer.ServeHTTP(w, r)
+		if fsPath != "index.html" {
+			if _, err := fs.Stat(FrontendFS, fsPath); err == nil {
+				fileServer.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(indexHTML)
 	})
 }

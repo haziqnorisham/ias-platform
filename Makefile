@@ -8,12 +8,12 @@ FRONTEND_DIST = frontend-dist
 dev:
 	@echo "==> Building for development (no embedded frontend)"
 	@[ -f .env ] || (echo "ERROR: .env file missing. Copy example.env to .env and configure it." && exit 1)
-	go build -o $(BINARY_NAME) .
+	CGO_ENABLED=0 go build -o $(BINARY_NAME) .
 	@echo "==> Build complete: $(BINARY_NAME)"
 
 release: frontend-rebuild
 	@echo "==> Building release with embedded frontend"
-	go build -tags embed -o $(BINARY_NAME) .
+	CGO_ENABLED=0 go build -tags embed -o $(BINARY_NAME) .
 	@echo "==> Release build complete: $(BINARY_NAME)"
 
 frontend-pull:
