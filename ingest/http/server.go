@@ -12,7 +12,6 @@ var IsRunning = false
 var currentServer *http.Server
 
 func SetupRoutes() {
-	http.HandleFunc("/", homeHandler)
 	http.Handle("/api/image/", http.StripPrefix("/api/image/", http.FileServer(http.Dir("public"))))
 
 	if os.Getenv("IAS_HC_BACKEND_ENABLE") == "true" {
@@ -87,6 +86,8 @@ func SetupRoutes() {
 			GetDashboardMetric(w, r)
 		})
 	}
+
+	mountFrontend()
 }
 func StartServer() {
 	currentServer = &http.Server{Addr: ":" + os.Getenv("HTTP_SERVER_PORT")}
