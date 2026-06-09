@@ -72,12 +72,22 @@ let pollInterval = null
 function buildMetricsPayload() {
   const metrics = []
   for (const item of layout.value) {
-    if (item.type === 'card' && item.config?.query?.deviceID) {
-      metrics.push({
-        deviceID: item.config.query.deviceID,
-        column_name: item.config.query.column_name || '',
-        data_type: item.config.query.data_type || 'number'
-      })
+    if (item.config?.query?.deviceID) {
+      if (item.type === 'card') {
+        metrics.push({
+          type: 'card',
+          deviceID: item.config.query.deviceID,
+          column_name: item.config.query.column_name || '',
+          data_type: item.config.query.data_type || 'number'
+        })
+      } else if (item.type === 'barchart') {
+        metrics.push({
+          type: 'barchart',
+          deviceID: item.config.query.deviceID,
+          x_axis: item.config.query.x_axis || '',
+          y_axis: item.config.query.y_axis || ''
+        })
+      }
     }
   }
   return { metrics }
