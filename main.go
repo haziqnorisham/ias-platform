@@ -17,6 +17,7 @@ import (
 func main() {
 	initLogger()
 	loadEnv()
+	initAuthIfEnabled()
 	initSharedPool()
 	defer ias_pg.CloseSharedPool()
 	setupHCBackendIfEnabled()
@@ -40,6 +41,15 @@ func loadEnv() {
 		os.Exit(1)
 	}
 	slog.Info("Environment variables loaded", "process", "main")
+}
+
+func initAuthIfEnabled() {
+	if os.Getenv("AUTH_ENABLED") != "true" {
+		slog.Info("Authentication is disabled", "process", "main")
+		return
+	}
+	slog.Info("Authentication is enabled, initializing session store", "process", "main")
+	ingest_http.InitSessionStore()
 }
 
 func initSharedPool() {

@@ -87,6 +87,12 @@ func SetupRoutes() {
 		})
 	}
 
+	if authEnabled() {
+		http.HandleFunc("/api/auth/login", AuthLogin)
+		http.HandleFunc("/api/auth/logout", AuthLogout)
+		http.HandleFunc("/api/auth/session", AuthSession)
+	}
+
 	mountFrontend()
 }
 func StartServer() {
