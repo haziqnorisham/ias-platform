@@ -1,8 +1,30 @@
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
+import Menu from 'primevue/menu'
+import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
+const { currentUser, logout } = useAuth()
+const menu = ref()
+
+const menuItems = [
+  {
+    label: 'Logout',
+    icon: 'pi pi-sign-out',
+    command: handleLogout
+  }
+]
+
+const toggleMenu = (event) => {
+  menu.value.toggle(event)
+}
+
+async function handleLogout() {
+  await logout()
+  router.push('/login')
+}
 
 const navItems = [
   { label: 'Home', icon: 'pi pi-home', to: '/' },
@@ -44,6 +66,15 @@ const navigate = (to) => {
                 </template>
             </Card>
         </div>
+
+        <div class="profile-section" @click="toggleMenu">
+            <i class="pi pi-user profile-icon"></i>
+            <span class="profile-name">{{ currentUser?.username || 'User' }}</span>
+            <span class="profile-role">({{ currentUser?.role }})</span>
+            <i class="pi pi-chevron-down profile-arrow"></i>
+        </div>
+        <Menu ref="menu" :model="menuItems" :popup="true" />
+        <div class="ribbon"><span>DEMO BUILD</span></div>
     </div>
 </template>
 
@@ -122,5 +153,54 @@ const navigate = (to) => {
 
 .text-container {
     color: #ffffff;
+}
+
+.profile-section {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    border-top: 1px solid #212121;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.profile-section:hover {
+    background-color: #3a3a3e;
+}
+
+.profile-icon {
+    font-size: 1rem;
+    color: #ffffff;
+    margin-right: 10px;
+}
+
+.profile-name {
+    color: #e0e0e0;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.profile-role {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.profile-arrow {
+    font-size: 0.75rem;
+    color: #888;
+    margin-left: auto;
+}
+
+.ribbon span {
+    display: block;
+    width: 100%;
+    background: rgba(240, 173, 78, 0.85);
+    color: #18181B;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 14px 0;
+    letter-spacing: 1px;
 }
 </style>
