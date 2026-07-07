@@ -1,49 +1,43 @@
 import { ref, computed } from 'vue'
-import { login as apiLogin, logout as apiLogout } from '../api/auth'
+import { login as apiLogin, logout as apiLogout, checkSession } from '../api/auth'
 
 const user = ref(null)
-const token = ref(null)
 const isAuthenticated = ref(false)
 const loading = ref(false)
 const error = ref(null)
 
-const STORAGE_KEY = 'ias_auth'
+let initPromise = null
 
-function initFromStorage() {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  if (!saved) return
+async function doInit() {
   try {
-    const data = JSON.parse(saved)
-    token.value = data.token
-    user.value = data.user
+    const data = await checkSession()
+    user.value = data
     isAuthenticated.value = true
   } catch {
-    localStorage.removeItem(STORAGE_KEY)
+    user.value = null
+    isAuthenticated.value = false
   }
 }
 
-initFromStorage()
-
 export function useAuth() {
   function checkAuth() {
-    initFromStorage()
+    if (!initPromise) {
+      initPromise = doInit()
+    }
+    return initPromise
   }
 
-  async function login(credentials, rememberMe = false) {
+  function waitForInit() {
+    return initPromise || Promise.resolve()
+  }
+
+  async function login(credentials) {
     loading.value = true
     error.value = null
     try {
-      const data = await apiLogin(credentials.email, credentials.password)
-      user.value = data.user
-      token.value = data.token
+      const data = await apiLogin(credentials.username, credentials.password)
+      user.value = data
       isAuthenticated.value = true
-
-      if (rememberMe) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          user: data.user,
-          token: data.token
-        }))
-      }
       return data
     } catch (err) {
       error.value = err.message || 'Login failed'
@@ -53,13 +47,14 @@ export function useAuth() {
     }
   }
 
-  function logout() {
-    user.value = null
-    token.value = null
-    isAuthenticated.value = false
-    error.value = null
-    localStorage.removeItem(STORAGE_KEY)
-    apiLogout()
+  async function logout() {
+    try {
+      await apiLogout()
+    } finally {
+      user.value = null
+      isAuthenticated.value = false
+      error.value = null
+    }
   }
 
   function clearError() {
@@ -67,17 +62,21 @@ export function useAuth() {
   }
 
   const currentUser = computed(() => user.value)
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   return {
     user,
-    token,
     isAuthenticated,
     loading,
     error,
     currentUser,
+    isAdmin,
     login,
     logout,
     checkAuth,
+    waitForInit,
     clearError
   }
 }
+
+initPromise = doInit()

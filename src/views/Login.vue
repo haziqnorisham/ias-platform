@@ -5,7 +5,6 @@ import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
-import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import { useAuth } from '../composables/useAuth'
 
@@ -14,13 +13,12 @@ const route = useRoute()
 const toast = useToast()
 const { login, loading } = useAuth()
 
-const email = ref('')
+const username = ref('')
 const password = ref('')
-const rememberMe = ref(false)
 
 async function handleLogin() {
-  if (!email.value || !email.value.trim()) {
-    toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Email or Username is required', life: 3000 })
+  if (!username.value || !username.value.trim()) {
+    toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Username is required', life: 3000 })
     return
   }
 
@@ -29,16 +27,11 @@ async function handleLogin() {
     return
   }
 
-  if (password.value.length < 8) {
-    toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Password must be at least 8 characters', life: 3000 })
-    return
-  }
-
   try {
     await login({
-      email: email.value.trim(),
+      username: username.value.trim(),
       password: password.value
-    }, rememberMe.value)
+    })
 
     const redirect = route.query.redirect || '/'
     router.push(redirect)
@@ -60,11 +53,11 @@ async function handleLogin() {
 
         <div class="login-form">
           <div class="field">
-            <label for="email">Email or Username</label>
+            <label for="username">Username</label>
             <InputText
-              id="email"
-              v-model="email"
-              placeholder="Enter your email or username"
+              id="username"
+              v-model="username"
+              placeholder="Enter your username"
               class="form-input"
               @keyup.enter="handleLogin"
             />
@@ -81,11 +74,6 @@ async function handleLogin() {
               :feedback="false"
               @keyup.enter="handleLogin"
             />
-          </div>
-
-          <div class="field-checkbox">
-            <Checkbox v-model="rememberMe" inputId="remember" :binary="true" />
-            <label for="remember">Remember Me</label>
           </div>
 
           <Button
@@ -160,18 +148,6 @@ async function handleLogin() {
   font-weight: 600;
   color: #a0a0a0;
   margin-bottom: 0.5rem;
-}
-
-.field-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.field-checkbox label {
-  font-size: 0.85rem;
-  color: #a0a0a0;
-  cursor: pointer;
 }
 
 .form-input {

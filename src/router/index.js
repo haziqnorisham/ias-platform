@@ -107,8 +107,10 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to, from, next) => {
-  const { isAuthenticated } = useAuth()
+router.beforeEach(async (to, from, next) => {
+  const { isAuthenticated, waitForInit } = useAuth()
+
+  await waitForInit()
 
   if (to.name === 'Login') {
     if (isAuthenticated.value) {

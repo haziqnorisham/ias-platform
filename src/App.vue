@@ -77,7 +77,6 @@ watch(
 
   <template v-if="!isLoginPage">
     <SideNav />
-    <div class="ribbon"><span>DEMO BUILD</span></div>
     <main class="main">
       <Breadcrumb :home="home" :model="items" class="breadcrumb" />
       <div class="routerView">
@@ -145,24 +144,4 @@ watch(
   background-color: transparent;
 }
 
-.ribbon {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 16rem;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.ribbon span {
-  display: block;
-  width: 100%;
-  background: rgba(240, 173, 78, 0.85);
-  color: #18181B;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 700;
-  padding: 14px 0;
-  letter-spacing: 1px;
-}
 </style>
