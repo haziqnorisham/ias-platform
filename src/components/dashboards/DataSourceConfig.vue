@@ -38,7 +38,7 @@ function loadFromValue(val) {
   if (val && val.deviceID) {
     enabled.value = true
     deviceId.value = val.deviceID || ''
-    if (props.widgetType === 'barchart') {
+    if (props.widgetType === 'barchart' || props.widgetType === 'linechart') {
       xAxis.value = val.x_axis || ''
       yAxis.value = val.y_axis || ''
     } else {
@@ -63,7 +63,7 @@ function emitUpdate() {
     return
   }
 
-  if (props.widgetType === 'barchart') {
+  if (props.widgetType === 'barchart' || props.widgetType === 'linechart') {
     emit('update:modelValue', {
       deviceID: deviceId.value,
       x_axis: xAxis.value.trim(),
@@ -130,7 +130,7 @@ function onEnabledChange() {
         </div>
       </template>
 
-      <template v-if="widgetType === 'barchart'">
+      <template v-if="widgetType === 'barchart' || widgetType === 'linechart'">
         <div class="edit-field query-field-column">
           <label>X Axis</label>
           <InputText v-model="xAxis" placeholder="timestamp" size="small" class="form-input" @blur="emitUpdate" @keydown.enter="$event.target.blur()" />

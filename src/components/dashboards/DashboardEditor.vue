@@ -24,6 +24,7 @@
       <div class="toolbar-section">
         <ButtonGroup>
           <Button icon="pi pi-chart-bar" label="Bar Chart" size="small" severity="secondary" @click="addChart" />
+          <Button icon="pi pi-chart-line" label="Line Chart" size="small" severity="secondary" @click="addLineChart" />
           <Button icon="pi pi-hashtag" label="Metric" size="small" severity="secondary" @click="addMetric" />
           <Button icon="pi pi-table" label="Table" size="small" severity="secondary" @click="addTable" />
           <Button icon="pi pi-pen-to-square" label="Text" size="small" severity="secondary" @click="addText" />
@@ -154,6 +155,19 @@ function addChart() {
   })
 }
 
+function addLineChart() {
+  const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+  layout.value.push({
+    x: 0,
+    y: maxY,
+    w: 6,
+    h: 4,
+    i: String(nextId++),
+    type: 'linechart',
+    lineChartTitle: 'New Line Chart'
+  })
+}
+
 function addTable() {
   const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
   layout.value.push({
@@ -192,6 +206,7 @@ function updateWidget(updated) {
     if (updated.cardTitle !== undefined) item.cardTitle = updated.cardTitle
     if (updated.cardValue !== undefined) item.cardValue = updated.cardValue
     if (updated.chartTitle !== undefined) item.chartTitle = updated.chartTitle
+    if (updated.lineChartTitle !== undefined) item.lineChartTitle = updated.lineChartTitle
     if (updated.tableTitle !== undefined) item.tableTitle = updated.tableTitle
     if (updated.textTitle !== undefined) item.textTitle = updated.textTitle
     if (updated.textContent !== undefined) item.textContent = updated.textContent

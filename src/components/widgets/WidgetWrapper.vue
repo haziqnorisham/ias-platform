@@ -198,6 +198,7 @@ const bodyStyle = computed(() => ({
   overflow: hidden;
   min-height: 0;
   box-sizing: border-box;
+  position: relative;
 }
 
 /*

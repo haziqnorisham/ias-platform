@@ -34,6 +34,7 @@
     <div class="editor-widget-body">
       <MetricCard v-if="widget.type === 'card'" :title="widget.cardTitle" :value="widget.cardValue" />
       <BarChartWidget v-else-if="widget.type === 'barchart'" :title="widget.chartTitle" />
+      <LineChartWidget v-else-if="widget.type === 'linechart'" :title="widget.lineChartTitle" />
       <TableWidget v-else-if="widget.type === 'table'" :title="widget.tableTitle" />
       <TextWidget v-else-if="widget.type === 'text'" :title="widget.textTitle" :text="widget.textContent" />
     </div>
@@ -62,7 +63,7 @@
         </div>
       </div>
 
-      <template v-if="widget.type === 'card' || widget.type === 'barchart'">
+      <template v-if="widget.type === 'card' || widget.type === 'barchart' || widget.type === 'linechart'">
         <hr class="edit-divider" />
         <DataSourceConfig
           v-model="widgetQueryConfig"
@@ -85,6 +86,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import MetricCard from '../widgets/MetricCard.vue'
 import BarChartWidget from './charts/BarChartWidget.vue'
+import LineChartWidget from './charts/LineChartWidget.vue'
 import TableWidget from './charts/TableWidget.vue'
 import TextWidget from './charts/TextWidget.vue'
 import DataSourceConfig from './DataSourceConfig.vue'
@@ -111,6 +113,7 @@ const deviceOptions = ref([])
 const widgetTitle = computed(() => {
   switch (props.widget.type) {
     case 'barchart': return props.widget.chartTitle
+    case 'linechart': return props.widget.lineChartTitle
     case 'table': return props.widget.tableTitle
     case 'text': return props.widget.textTitle
     default: return props.widget.cardTitle || '—'
@@ -121,6 +124,10 @@ watch(() => props.widget, (w) => {
   switch (w.type) {
     case 'barchart':
       draftTitle.value = w.chartTitle || ''
+      draftValue.value = ''
+      break
+    case 'linechart':
+      draftTitle.value = w.lineChartTitle || ''
       draftValue.value = ''
       break
     case 'table':
@@ -144,6 +151,10 @@ function startEdit() {
       draftTitle.value = w.chartTitle || ''
       draftValue.value = ''
       break
+    case 'linechart':
+      draftTitle.value = w.lineChartTitle || ''
+      draftValue.value = ''
+      break
     case 'table':
       draftTitle.value = w.tableTitle || ''
       draftValue.value = ''
@@ -157,7 +168,7 @@ function startEdit() {
       draftValue.value = w.cardValue || ''
   }
 
-  if (w.type === 'card' || w.type === 'barchart') {
+  if (w.type === 'card' || w.type === 'barchart' || w.type === 'linechart') {
     deviceOptions.value = props.devices
     widgetQueryConfig.value = w.config?.query ?? null
   }
@@ -173,6 +184,9 @@ function saveTitle() {
   switch (props.widget.type) {
     case 'barchart':
       if (newTitle) updatePayload.chartTitle = newTitle
+      break
+    case 'linechart':
+      if (newTitle) updatePayload.lineChartTitle = newTitle
       break
     case 'table':
       if (newTitle) updatePayload.tableTitle = newTitle
