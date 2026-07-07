@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 
 // route components
 import Home from '../views/Home.vue';
@@ -16,6 +17,7 @@ import IntegrationsHub from '../views/IntegrationsHub.vue';
 import OnvifStreams from '../views/OnvifStreams.vue';
 import OnvifStreamDetail from '../views/OnvifStreamDetail.vue';
 import DashboardView from '../views/DashboardView.vue';
+import Login from '../views/Login.vue';
 
 const routes = [
   {
@@ -92,6 +94,11 @@ const routes = [
     path: '/integrations/onvif-streams/:id',
     name: 'OnvifStreamDetail',
     component: OnvifStreamDetail
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
   }
 ];
 
@@ -99,5 +106,23 @@ const router = createRouter({
   history: createWebHistory(),
   routes
 });
+
+router.beforeEach((to, from, next) => {
+  const { isAuthenticated } = useAuth()
+
+  if (to.name === 'Login') {
+    if (isAuthenticated.value) {
+      next('/')
+    } else {
+      next()
+    }
+  } else {
+    if (!isAuthenticated.value) {
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+    } else {
+      next()
+    }
+  }
+})
 
 export default router;

@@ -5,10 +5,12 @@ import Breadcrumb from 'primevue/breadcrumb';
 import ScrollPanel from 'primevue/scrollpanel';
 import Footer from "./components/Footer.vue";
 import Toast from 'primevue/toast';
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
+
+const isLoginPage = computed(() => route.name === 'Login')
 
 const home = ref({
   icon: 'pi pi-home'
@@ -72,25 +74,26 @@ watch(
 
 <template>
   <Toast position="top-center"/>
-  <SideNav />
 
-  <div class="ribbon"><span>DEMO BUILD</span></div>
+  <template v-if="!isLoginPage">
+    <SideNav />
+    <div class="ribbon"><span>DEMO BUILD</span></div>
+    <main class="main">
+      <Breadcrumb :home="home" :model="items" class="breadcrumb" />
+      <div class="routerView">
+        <router-view />
+      </div>
+      <ScrollPanel class="content">
 
-  <main class="main">
-    <Breadcrumb :home="home" :model="items" class="breadcrumb" />
-    <div class="routerView">
-      <router-view />
-    </div>
-    
-    <ScrollPanel class="content">
-
-    </ScrollPanel>
-    
-    <div class="footer_position">
-      <Footer />
-    </div>
-  </main>
-
+      </ScrollPanel>
+      <div class="footer_position">
+        <Footer />
+      </div>
+    </main>
+  </template>
+  <template v-else>
+    <router-view />
+  </template>
 </template>
 
 <style scoped>
