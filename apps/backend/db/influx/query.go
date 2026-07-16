@@ -53,19 +53,25 @@ func QueryProcessedData(limit int, offset int, sortDesc bool, deviceID string, r
 	return queryProcessedPoints(flux)
 }
 
-func QueryDeviceHistory(deviceID string, limit int) ([]ProcessedPoint, error) {
+func QueryDeviceHistory(deviceID string, limit int, startTime time.Time) ([]ProcessedPoint, error) {
 	if limit <= 0 {
 		limit = 1000
 	}
 
+	rangeStart := "1970-01-01T00:00:00Z"
+	if !startTime.IsZero() {
+		rangeStart = startTime.Format(time.RFC3339)
+	}
+
 	flux := fmt.Sprintf(`
 		from(bucket: "%s")
-			|> range(start: 1970-01-01T00:00:00Z)
+			|> range(start: %s)
 			|> filter(fn: (r) => r._measurement == "processed_data" and r.device_id == "%s")
 			|> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
 			|> sort(columns: ["_time"], desc: true)
 			|> limit(n: %d)
-	`, Bucket, deviceID, limit)
+			|> sort(columns: ["_time"], desc: false)
+	`, Bucket, rangeStart, deviceID, limit)
 
 	return queryProcessedPoints(flux)
 }

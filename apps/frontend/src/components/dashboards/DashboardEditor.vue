@@ -35,8 +35,8 @@
     <div class="canvas-area">
       <GridLayout
         v-model:layout="layout"
-        :col-num="12"
-        :row-height="80"
+        :col-num="24"
+        :row-height="50"
         :is-draggable="true"
         :is-resizable="true"
         :margin="[12, 12]"

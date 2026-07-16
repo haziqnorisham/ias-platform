@@ -47,7 +47,7 @@ onMounted(async () => {
       subtitle="Extension"
     >
       <div class="centered">
-        <Button label="Configure" icon="pi pi-cog" @click="router.push(`/extensions/${ext.name}`)" />
+        <Button label="Open" icon="pi pi-arrow-up-right" @click="router.push(`/extensions/${ext.name}`)" />
       </div>
     </Panel>
   </div>

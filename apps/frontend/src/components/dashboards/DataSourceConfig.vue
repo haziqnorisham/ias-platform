@@ -25,7 +25,6 @@ const enabled = ref(false)
 const deviceId = ref('')
 const columnName = ref('')
 const dataType = ref('number')
-const xAxis = ref('')
 const yAxis = ref('')
 
 const dataTypeOptions = [
@@ -39,7 +38,6 @@ function loadFromValue(val) {
     enabled.value = true
     deviceId.value = val.deviceID || ''
     if (props.widgetType === 'barchart' || props.widgetType === 'linechart') {
-      xAxis.value = val.x_axis || ''
       yAxis.value = val.y_axis || ''
     } else {
       columnName.value = val.column_name || ''
@@ -50,7 +48,6 @@ function loadFromValue(val) {
     deviceId.value = ''
     columnName.value = ''
     dataType.value = 'number'
-    xAxis.value = ''
     yAxis.value = ''
   }
 }
@@ -66,7 +63,6 @@ function emitUpdate() {
   if (props.widgetType === 'barchart' || props.widgetType === 'linechart') {
     emit('update:modelValue', {
       deviceID: deviceId.value,
-      x_axis: xAxis.value.trim(),
       y_axis: yAxis.value.trim()
     })
   } else {
@@ -132,11 +128,7 @@ function onEnabledChange() {
 
       <template v-if="widgetType === 'barchart' || widgetType === 'linechart'">
         <div class="edit-field query-field-column">
-          <label>X Axis</label>
-          <InputText v-model="xAxis" placeholder="timestamp" size="small" class="form-input" @blur="emitUpdate" @keydown.enter="$event.target.blur()" />
-        </div>
-        <div class="edit-field query-field-type">
-          <label>Y Axis (Time)</label>
+          <label>Column Name</label>
           <InputText v-model="yAxis" placeholder="object.temperature" size="small" class="form-input" @blur="emitUpdate" @keydown.enter="$event.target.blur()" />
         </div>
       </template>

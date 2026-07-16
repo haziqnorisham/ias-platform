@@ -8,9 +8,6 @@ Backend for **IAS_HC** front-end UI. Also data ingest endpoint.
 - PosgresSQL
 - IndluxDB
 - Redis
-- Docker
-
-# Dev Env Setup
 
 ## Specs
 - Architecture: x86-64
@@ -65,17 +62,5 @@ Enable Redis:
 ```bash
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
-```
-### 7. Install Docker
-
-```bash
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh ./get-docker.sh
-```
-### 8. Post-install:
-
-```bash
-sudo groupadd docker
-sudo usermod -aG docker $USER
 ```
 Done. Go build stuff.

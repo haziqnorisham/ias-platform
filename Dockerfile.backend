@@ -1,0 +1,17 @@
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /build
+COPY apps/backend/ .
+RUN CGO_ENABLED=0 go build -o /ias-backend .
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+COPY --from=builder /ias-backend .
+
+RUN mkdir -p public
+
+EXPOSE 9090
+CMD ["./ias-backend"]

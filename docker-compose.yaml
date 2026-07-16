@@ -1,0 +1,83 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: ias-backend
+    restart: unless-stopped
+    env_file: .env.docker
+    volumes:
+      - ./apps/backend/extensions:/app/extensions
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    networks:
+      - ias-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: ias-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ias-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ias-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ias-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ias-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: myapp_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ias-network
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: ias-influxdb
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
+      DOCKER_INFLUXDB_INIT_ORG: camart
+      DOCKER_INFLUXDB_INIT_BUCKET: ias_processed
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: _kXrl6YnahcxV3UPr0CJp7uoeqQDFWfYiDkILGoBofhaj7SMLmZ160A7L58N89M_PJSzguZNdXfhNjoE53pPVw==
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    networks:
+      - ias-network
+
+volumes:
+  redis-data:
+  postgres-data:
+  influxdb-data:
+
+networks:
+  ias-network:
+    driver: bridge

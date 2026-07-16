@@ -567,7 +567,7 @@ func GetDeviceSuccessfulIngest(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("Retrieving successful ingest records for device", "device_id", req.DeviceID, "process", "hc_handler_main")
 
-	points, err := ias_influx.QueryDeviceHistory(req.DeviceID, req.Limit)
+	points, err := ias_influx.QueryDeviceHistory(req.DeviceID, req.Limit, time.Time{})
 	if err != nil {
 		slog.Error("Failed to retrieve ingest history", "device_id", req.DeviceID, "error", err)
 		http.Error(w, `{"error":"failed to retrieve ingest history"}`, http.StatusInternalServerError)
@@ -1038,6 +1038,7 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		Metrics []MetricRequest `json:"metrics"`
+		Start   *time.Time      `json:"start,omitempty"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1130,6 +1131,11 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var startTime time.Time
+	if req.Start != nil {
+		startTime = *req.Start
+	}
+
 	// Build response
 	results := make([]MetricResponse, len(req.Metrics))
 	for i, m := range req.Metrics {
@@ -1154,7 +1160,7 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 				YAxis:    m.YAxis,
 			}
 
-			points, err := ias_influx.QueryDeviceHistory(m.DeviceID, defaultTimeSeriesLimit)
+			points, err := ias_influx.QueryDeviceHistory(m.DeviceID, defaultTimeSeriesLimit, startTime)
 			if err != nil {
 				slog.Error("Failed to query time-series data",
 					"deviceID", m.DeviceID,

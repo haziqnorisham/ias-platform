@@ -1,13 +1,24 @@
 <template>
-  <div ref="chartContainer" class="chart-container"></div>
+  <div ref="chartContainer" class="chart-container">
+    <div v-if="loading" class="chart-overlay">
+      <ProgressSpinner style="width: 28px; height: 28px" strokeWidth="4" />
+    </div>
+    <div v-else-if="error" class="chart-overlay chart-overlay--error">
+      <i class="pi pi-exclamation-triangle" style="font-size: 1.5rem; color: #e57373"></i>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
+import ProgressSpinner from 'primevue/progressspinner'
 
-defineProps({
-  title: { type: String, default: 'Line Chart' }
+const props = defineProps({
+  title: { type: String, default: 'Line Chart' },
+  dataPoints: { type: Array, default: null },
+  loading: { type: Boolean, default: false },
+  error: { type: Boolean, default: false }
 })
 
 const chartContainer = ref(null)
@@ -15,14 +26,37 @@ let chart = null
 let resizeObserver = null
 
 const PRIMARY = '#48897b'
-const PRIMARY_LIGHT = '#5fa89a'
 
-onMounted(() => {
-  if (!chartContainer.value) return
+function buildOption(dataPoints) {
+  const hasData = dataPoints && dataPoints.length > 0
+  const seriesData = hasData
+    ? dataPoints.map(p => [p.x, typeof p.y === 'number' ? p.y : parseFloat(p.y)])
+    : [150, 230, 224, 218, 135, 147, 260]
 
-  chart = echarts.init(chartContainer.value, 'dark')
+  const xAxis = hasData ? {
+    type: 'time',
+    axisLabel: {
+      color: '#6d6d6d',
+      fontFamily: '"Space Grotesk", sans-serif',
+      fontSize: 9,
+    },
+    axisLine: { lineStyle: { color: '#2a2a2e' } },
+    axisTick: { show: false },
+    splitLine: { show: false },
+  } : {
+    type: 'category',
+    boundaryGap: false,
+    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    axisLabel: {
+      color: '#6d6d6d',
+      fontFamily: '"Space Grotesk", sans-serif',
+      fontSize: 9,
+    },
+    axisLine: { lineStyle: { color: '#2a2a2e' } },
+    axisTick: { show: false },
+  }
 
-  const option = {
+  return {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
@@ -42,18 +76,7 @@ onMounted(() => {
       top: '8%',
       containLabel: true,
     },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      axisLabel: {
-        color: '#6d6d6d',
-        fontFamily: '"Space Grotesk", sans-serif',
-        fontSize: 9,
-      },
-      axisLine: { lineStyle: { color: '#2a2a2e' } },
-      axisTick: { show: false },
-    },
+    xAxis,
     yAxis: {
       type: 'value',
       axisLabel: {
@@ -72,7 +95,7 @@ onMounted(() => {
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        data: [150, 230, 224, 218, 135, 147, 260],
+        data: seriesData,
         lineStyle: {
           color: PRIMARY,
           width: 2,
@@ -89,8 +112,13 @@ onMounted(() => {
       },
     ],
   }
+}
 
-  chart.setOption(option)
+onMounted(() => {
+  if (!chartContainer.value) return
+
+  chart = echarts.init(chartContainer.value, 'dark')
+  chart.setOption(buildOption(props.dataPoints))
 
   resizeObserver = new ResizeObserver(() => {
     chart?.resize()
@@ -98,6 +126,12 @@ onMounted(() => {
   resizeObserver.observe(chartContainer.value)
 
   window.addEventListener('resize', handleResize)
+})
+
+watch(() => props.dataPoints, (newVal) => {
+  if (chart) {
+    chart.setOption(buildOption(newVal))
+  }
 })
 
 onUnmounted(() => {
@@ -124,5 +158,20 @@ function handleResize() {
   left: 0;
   right: 0;
   bottom: 0;
+}
+
+.chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 26, 26, 0.85);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.chart-overlay--error {
+  background: rgba(26, 26, 26, 0.7);
 }
 </style>
