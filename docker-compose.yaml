@@ -73,10 +73,31 @@ services:
     networks:
       - ias-network
 
+  lldap:
+    image: lldap/lldap:stable
+    container_name: ias-lldap
+    restart: unless-stopped
+    ports:
+      - "17170:17170"
+      - "3890:3890"
+    environment:
+      UID: 0
+      GID: 0
+      TZ: Asia/Kuala Lumpur
+      LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
+      LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
+      LLDAP_LDAP_BASE_DN: dc=example,dc=com
+      LLDAP_LDAP_USER_PASS: CHANGEME
+    volumes:
+      - lldap-data:/data
+    networks:
+      - ias-network
+
 volumes:
   redis-data:
   postgres-data:
   influxdb-data:
+  lldap-data:
 
 networks:
   ias-network:
