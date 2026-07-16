@@ -1,0 +1,12 @@
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: "Space Grotesk", sans-serif, Roboto, Helvetica, Arial, sans-serif;
+    --p-button-primary-background: #48897b;
+    --p-button-primary-border-color: #48897b;
+    --p-button-text-primary-color: #48897b
+}
