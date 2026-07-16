@@ -223,7 +223,7 @@ function handleDeleteRequest() {
                         <img v-if="previewSrc" :src="previewSrc" alt="Profile Image" class="image-preview" />
                         <img v-else-if="serverImageUrl && !serverImageFailed" :src="serverImageUrl" alt="Existing Profile Image" class="image-preview" @error="serverImageFailed = true" />
                         <div v-else class="image-placeholder">
-                            <i class="pi pi-image" style="font-size: 2rem; color: #555"></i>
+                            <i class="pi pi-image" :style="{ fontSize: 'var(--font-size-2xl)', color: '#555' }"></i>
                             <span>216 × 329px</span>
                             <span class="placeholder-hint">PNG only</span>
                         </div>
@@ -337,7 +337,7 @@ function handleDeleteRequest() {
 
 .form-field label {
     font-family: "Space Grotesk", sans-serif;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     font-weight: 600;
     color: #a0a0a0;
 }
@@ -393,14 +393,14 @@ function handleDeleteRequest() {
     align-items: center;
     gap: 0.25rem;
     color: #666;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     font-family: "Space Grotesk", sans-serif;
     text-align: center;
 }
 
 .image-placeholder .placeholder-hint {
     color: #555;
-    font-size: 0.7rem;
+    font-size: var(--font-size-xs);
 }
 
 .image-upload-actions {
@@ -412,7 +412,7 @@ function handleDeleteRequest() {
 .decoder-textarea :deep(textarea) {
     resize: vertical;
     font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-    font-size: 0.82rem;
+    font-size: var(--font-size-sm);
     line-height: 1.55;
     background: #0a0a0c;
     color: #d4d4d4;
@@ -429,7 +429,7 @@ function handleDeleteRequest() {
 
 .mappings-empty {
     color: #666;
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     padding: 0.5rem 0;
     text-align: center;
 }

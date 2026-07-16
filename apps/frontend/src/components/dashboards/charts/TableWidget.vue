@@ -35,12 +35,12 @@ const tableData = [
 }
 
 .inner-table :deep(.p-datatable-thead > tr > th) {
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   padding: 0.25rem 0.5rem;
 }
 
 .inner-table :deep(.p-datatable-tbody > tr > td) {
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   padding: 0.2rem 0.5rem;
 }
 </style>

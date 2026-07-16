@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ias_pg "ias/automation/db/pg"
+	ias_influx "ias/automation/db/influx"
 
 	"github.com/dop251/goja"
 )
@@ -182,22 +183,15 @@ func processRecord(db *ias_pg.PostgresStorage, raw ias_pg.HcRawIngest) {
 		processedPayload = "{}"
 	}
 
-	processed := ias_pg.HcProcessedData{
-		RawMessageID:     raw.MessageID,
-		DeviceID:         deviceID,
-		ProfileID:        profileID,
-		ProcessedPayload: processedPayload,
-		Success:          success,
-		ErrorMessage:     errorMsg,
+	if success {
+		if err := ias_influx.WriteProcessedPoint(deviceID, profileID, raw.MessageID, processedPayload, time.Time{}); err != nil {
+			log.Error("Failed to write InfluxDB point, marking as error", "error", err)
+			success = false
+			errorMsg = "influxdb write error: " + err.Error()
+		}
 	}
 
-	processedID, err := db.InsertProcessedData(processed)
-	if err != nil {
-		log.Error("Failed to insert processed data", "error", err)
-		return
-	}
-
-	if err := db.UpsertIngestSummary(raw.MessageID, processedID); err != nil {
+	if err := db.UpsertIngestSummary(raw.MessageID, deviceID, profileID, success, errorMsg); err != nil {
 		log.Error("Failed to upsert ingest summary", "error", err)
 	}
 

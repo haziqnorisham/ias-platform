@@ -47,6 +47,6 @@ defineProps({
 }
 .subtitle {
     font-style: italic;
-    font-size: 0.7rem;
+    font-size: var(--font-size-xs);
 }
 </style>

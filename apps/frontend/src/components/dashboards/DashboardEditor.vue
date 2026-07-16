@@ -285,11 +285,11 @@ async function handleDelete() {
 .dashboard-name {
   width: 260px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
 }
 
 .header-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   color: #888;
 }
 
@@ -351,14 +351,14 @@ async function handleDelete() {
 }
 
 .placeholder-icon {
-  font-size: 3rem;
+  font-size: var(--font-size-3xl);
   color: #2a2a2e;
   margin-bottom: 0.75rem;
 }
 
 .placeholder-text {
   color: #444;
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   margin: 0;
 }
 </style>

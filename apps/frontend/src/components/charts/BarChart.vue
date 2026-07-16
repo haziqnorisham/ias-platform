@@ -46,7 +46,7 @@
                 color: '#a0a0a0',
                 font: {
                   family: '"Space Grotesk", sans-serif',
-                  size: 12,
+                  size: 10,
                 },
                 usePointStyle: true,
                 pointStyleWidth: 8,
@@ -72,7 +72,7 @@
                 color: '#6d6d6d',
                 font: {
                   family: '"Space Grotesk", sans-serif',
-                  size: 11,
+                  size: 9,
                 }
               },
               grid: {
@@ -85,7 +85,7 @@
                 color: '#6d6d6d',
                 font: {
                   family: '"Space Grotesk", sans-serif',
-                  size: 11,
+                  size: 9,
                 }
               },
               grid: {

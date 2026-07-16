@@ -85,6 +85,12 @@ func SetupRoutes() {
 		http.HandleFunc("/api/get_dashboard_metric", func(w http.ResponseWriter, r *http.Request) {
 			GetDashboardMetric(w, r)
 		})
+		http.HandleFunc("/api/extensions", func(w http.ResponseWriter, r *http.Request) {
+			GetExtensionList(w, r)
+		})
+		http.HandleFunc("/api/extensions/", func(w http.ResponseWriter, r *http.Request) {
+			ServeExtensionUI(w, r)
+		})
 	}
 
 	if authEnabled() {

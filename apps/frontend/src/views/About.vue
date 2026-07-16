@@ -13,8 +13,8 @@
   <!-- PrimeVue Dialog Modal -->
   <Dialog v-model:visible="modalVisible" header="Test Result" :modal="true" :closable="true" :style="{ width: '450px' }">
     <div class="modal-content">
-      <i class="pi pi-check-circle" style="font-size: 3rem; color: #4CAF50; margin-bottom: 1rem;"></i>
-      <p style="font-size: 1.2rem; margin: 0;">Test Successful</p>
+      <i class="pi pi-check-circle" :style="{ fontSize: 'var(--font-size-3xl)', color: '#4CAF50', marginBottom: '1rem' }"></i>
+      <p :style="{ fontSize: 'var(--font-size-lg)', margin: '0' }">Test Successful</p>
     </div>
     <template #footer>
       <Button label="Close" icon="pi pi-times" @click="closeModal" class="p-button-text"/>

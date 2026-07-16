@@ -35,7 +35,7 @@ const items = ref([
     --p-menubar-border-color: Transparent;
     --p-menubar-border-radius: 0px; 
     border-bottom: 1px solid #212121;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     
     height: 2.5rem;
 }
@@ -44,7 +44,7 @@ const items = ref([
     justify-content : center;
     --p-menubar-border-color: Transparent;
     --p-menubar-border-radius: 0px; 
-    font-size: 10px;
+    font-size: var(--font-size-2xs);
     
     height: 2rem;
     font-weight: 700;

@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	ias_extension "ias/automation/extension"
+	ias_influx "ias/automation/db/influx"
 	ias_pg "ias/automation/db/pg"
 	ingest_http "ias/automation/ingest/http"
 	ingest_mqtt "ias/automation/ingest/mqtt"
@@ -20,7 +22,11 @@ func main() {
 	initAuthIfEnabled()
 	initSharedPool()
 	defer ias_pg.CloseSharedPool()
+	initInfluxIfEnabled()
+	defer ias_influx.CloseClient()
 	setupHCBackendIfEnabled()
+	initExtensionsIfEnabled()
+	defer ias_extension.ShutdownGlobal()
 	startHTTPServerIfEnabled()
 	startMQTTIfEnabled()
 	sched := startWorkerIfEnabled()
@@ -61,6 +67,18 @@ func initSharedPool() {
 	slog.Info("PostgreSQL shared connection pool initialized", "process", "main")
 }
 
+func initInfluxIfEnabled() {
+	if os.Getenv("IAS_HC_BACKEND_ENABLE") != "true" {
+		return
+	}
+	slog.Info("Initializing InfluxDB client", "process", "main")
+	if err := ias_influx.InitClient(); err != nil {
+		slog.Error("Failed to initialize InfluxDB client", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("InfluxDB client initialized", "process", "main")
+}
+
 func setupHCBackendIfEnabled() {
 	if os.Getenv("IAS_HC_BACKEND_ENABLE") != "true" {
 		slog.Info("IAS HC Backend Server is disabled", "process", "main")
@@ -71,6 +89,26 @@ func setupHCBackendIfEnabled() {
 		slog.Error("Failed to setup HC schema", "error", err)
 		os.Exit(1)
 	}
+}
+
+func initExtensionsIfEnabled() {
+	if os.Getenv("IAS_HC_BACKEND_ENABLE") != "true" {
+		return
+	}
+	if os.Getenv("IAS_ENABLE_EXTENSION") != "true" {
+		slog.Info("Extensions are disabled (IAS_ENABLE_EXTENSION != true)", "process", "main")
+		return
+	}
+	extensionsDir := os.Getenv("IAS_EXTENSIONS_DIR")
+	if extensionsDir == "" {
+		extensionsDir = "./extensions"
+	}
+	slog.Info("Initializing extensions", "dir", extensionsDir, "process", "main")
+	if err := ias_extension.InitGlobal(extensionsDir); err != nil {
+		slog.Error("Failed to initialize extensions", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Extensions initialized", "process", "main")
 }
 
 func startHTTPServerIfEnabled() {

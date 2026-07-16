@@ -16,10 +16,12 @@ services:
     ports:
       - "8086:8086"
     environment:
-      - INFLUXDB_DB=myapp_db
-      - INFLUXDB_ADMIN_USER=admin
-      - INFLUXDB_ADMIN_PASSWORD=admin123
-      - INFLUXDB_HTTP_AUTH_ENABLED=false
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=camart
+      - DOCKER_INFLUXDB_INIT_BUCKET=ias_processed
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=_kXrl6YnahcxV3UPr0CJp7uoeqQDFWfYiDkILGoBofhaj7SMLmZ160A7L58N89M_PJSzguZNdXfhNjoE53pPVw==
     tmpfs:
       - /var/lib/influxdb2
     networks:

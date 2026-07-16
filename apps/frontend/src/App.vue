@@ -27,9 +27,8 @@ const routeLabelMap = {
   DeviceProfiles: 'Device Profiles',
   IngestLogs: 'Ingest Logs',
   Diagnostics: 'Diagnostics',
-  Integrations: 'Integrations',
-  OnvifStreams: 'ONVIF Streams',
-  OnvifStreamDetail: 'Stream Detail',
+  Extensions: 'Extensions',
+  ExtensionDetail: 'Extension',
   Settings: 'Settings',
   About: 'About',
 };

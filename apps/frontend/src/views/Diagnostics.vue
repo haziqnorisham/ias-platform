@@ -7,18 +7,13 @@
         <Button label="Run Test" icon="pi pi-play" class="btn" @click="runBackendLinkTest"/>
       </div>
     </Panel>
-    <Panel title="ONVIF Media Server Test" subtitle="Verify connectivity to the IAS Media Server (port 8080).">
-      <div class="centered">
-        <Button label="Run Test" icon="pi pi-play" class="btn" @click="runOnvifTest"/>
-      </div>
-    </Panel>
   </div>
 
   <!-- PrimeVue Dialog Modal -->
   <Dialog v-model:visible="modalVisible" :header="modalHeader" :modal="true" :closable="false" :style="{ width: '500px' }">
     <div class="modal-content">
-      <i :class="modalIconClass" :style="{ fontSize: '3rem', color: modalIconColor, marginBottom: '1rem' }"></i>
-      <p style="font-size: 1.2rem; margin: 0 0 1rem 0;">{{ modalMessage }}</p>
+      <i :class="modalIconClass" :style="{ fontSize: 'var(--font-size-3xl)', color: modalIconColor, marginBottom: '1rem' }"></i>
+      <p style="font-size: var(--font-size-lg); margin: 0 0 1rem 0;">{{ modalMessage }}</p>
       <div v-if="modalDetails" class="modal-details">
         <pre>{{ modalDetails }}</pre>
       </div>
@@ -38,7 +33,6 @@ import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
 
 import { testApi } from '@/api/posts'
-import { getMediaHealth } from '@/api/media'
 
 // Page blocking state
 const loading = ref(false)
@@ -105,38 +99,6 @@ async function runBackendLinkTest() {
   }
 }
 
-async function runOnvifTest() {
-  loading.value = true
-  try {
-    const response = await getMediaHealth()
-    if (response.status === 'healthy') {
-      showTestModal(
-        'ONVIF Media Server',
-        true,
-        'Media server is healthy and reachable.',
-        JSON.stringify(response, null, 2)
-      )
-    } else {
-      showTestModal(
-        'ONVIF Media Server',
-        false,
-        `Media server reports: ${response.status}`,
-        JSON.stringify(response, null, 2)
-      )
-    }
-  } catch (error) {
-    console.error('ONVIF Media Server Error:', error)
-    showTestModal(
-      'ONVIF Media Server',
-      false,
-      `Error: ${error.message || 'Failed to connect to media server'}`,
-      error.stack || JSON.stringify(error, null, 2)
-    )
-  } finally {
-    loading.value = false
-  }
-}
-
 // Function to close the modal
 const closeModal = () => {
   modalVisible.value = false;
@@ -170,7 +132,7 @@ const closeModal = () => {
 
 .modal-details pre {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     white-space: pre-wrap;
     word-wrap: break-word;
 }

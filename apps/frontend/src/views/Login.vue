@@ -120,14 +120,14 @@ async function handleLogin() {
 }
 
 .login-title {
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
   margin: 0 0 0.5rem;
   color: #e0e0e0;
 }
 
 .login-subtitle {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: #888;
   margin: 0;
 }
@@ -144,7 +144,7 @@ async function handleLogin() {
 }
 
 .field label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: #a0a0a0;
   margin-bottom: 0.5rem;

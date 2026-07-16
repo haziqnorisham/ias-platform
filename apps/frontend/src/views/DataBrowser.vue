@@ -216,7 +216,7 @@ onMounted(() => {
 
 .page-title {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   font-weight: 700;
   color: #e0e0e0;
   margin: 0;
@@ -230,7 +230,7 @@ onMounted(() => {
 
 .field-label {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: #a0a0a0;
 }
@@ -242,7 +242,7 @@ onMounted(() => {
 
 .section-title {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: #e0e0e0;
   margin: 0 0 0.75rem 0;
@@ -291,7 +291,7 @@ onMounted(() => {
 }
 
 .info-label {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   color: #888;
   text-transform: uppercase;
@@ -299,7 +299,7 @@ onMounted(() => {
 }
 
 .info-value {
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   color: #e0e0e0;
 }
 
@@ -310,19 +310,19 @@ onMounted(() => {
 }
 
 .tight-table :deep(.p-datatable-thead > tr > th) {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   padding: 0.4rem 0.6rem;
 }
 
 .tight-table :deep(.p-datatable-tbody > tr > td) {
-  font-size: 0.78rem;
+  font-size: var(--font-size-sm);
   padding: 0.3rem 0.6rem;
 }
 
 .empty-table,
 .empty-selection {
   color: #666;
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   text-align: center;
   padding: 2rem 0;
 }
@@ -342,7 +342,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
@@ -378,7 +378,7 @@ onMounted(() => {
 
 .modal-content pre {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   white-space: pre-wrap;
   word-wrap: break-word;
   background: #212121;

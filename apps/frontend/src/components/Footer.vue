@@ -24,6 +24,6 @@
 .footer-content p {
     margin: 0;
     color: #666;
-    font-size: 14px;
+    font-size: var(--font-size-md);
 }
 </style>

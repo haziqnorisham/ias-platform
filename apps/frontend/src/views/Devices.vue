@@ -207,13 +207,13 @@ async function handleDeleteConfirm() {
 
 .italic {
     font-style: italic;
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
 }
 
 .bold {
     margin-top: 0.25rem;
     font-weight: bold;
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
 }
 
 .global-spinner {

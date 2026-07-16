@@ -152,7 +152,7 @@ function onEnabledChange() {
 }
 
 .ds-section-label {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: #777;
   text-transform: uppercase;
@@ -166,7 +166,7 @@ function onEnabledChange() {
 }
 
 .toggle-label {
-  font-size: 0.82rem;
+  font-size: var(--font-size-sm);
   color: #ccc;
 }
 
@@ -183,7 +183,7 @@ function onEnabledChange() {
 }
 
 .edit-field label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: #a0a0a0;
 }

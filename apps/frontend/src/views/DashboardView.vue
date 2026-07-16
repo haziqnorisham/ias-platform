@@ -30,7 +30,7 @@
         class="grid-item"
         :static="true"
       >
-        <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : item.type === 'barchart' ? item.chartTitle : item.type === 'linechart' ? item.lineChartTitle : item.type === 'table' ? item.tableTitle : item.type === 'text' ? item.textTitle : item.type === 'stream' ? 'Live Stream' : ''">
+        <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : item.type === 'barchart' ? item.chartTitle : item.type === 'linechart' ? item.lineChartTitle : item.type === 'table' ? item.tableTitle : item.type === 'text' ? item.textTitle : ''">
           <MetricCard
             v-if="item.type === 'card'"
             :title="item.cardTitle"
@@ -42,7 +42,6 @@
           <LineChartWidget v-else-if="item.type === 'linechart'" :title="item.lineChartTitle" />
           <TableWidget v-else-if="item.type === 'table'" :title="item.tableTitle" />
           <TextWidget v-else-if="item.type === 'text'" :title="item.textTitle" :text="item.textContent" />
-          <StreamWidget v-else-if="item.type === 'stream'" />
         </WidgetWrapper>
       </GridItem>
     </GridLayout>
@@ -61,7 +60,6 @@ import BarChartWidget from '@/components/dashboards/charts/BarChartWidget.vue'
 import LineChartWidget from '@/components/dashboards/charts/LineChartWidget.vue'
 import TableWidget from '@/components/dashboards/charts/TableWidget.vue'
 import TextWidget from '@/components/dashboards/charts/TextWidget.vue'
-import StreamWidget from '@/components/widgets/StreamWidget.vue'
 import { getDashboard, getDashboardMetric } from '@/api/posts'
 
 const route = useRoute()
@@ -239,7 +237,7 @@ onUnmounted(() => {
 }
 
 .empty-icon {
-  font-size: 3rem;
+  font-size: var(--font-size-3xl);
   margin-bottom: 0.75rem;
   color: #444;
 }

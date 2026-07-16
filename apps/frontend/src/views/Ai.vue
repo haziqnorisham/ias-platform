@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="chat-header">
       <div class="header-content">
-        <i class="pi pi-comments" style="font-size: 1.5rem; margin-right: 10px;"></i>
+        <i class="pi pi-comments" :style="{ fontSize: 'var(--font-size-xl)', marginRight: '10px' }"></i>
         <h1>AI Assistant</h1>
       </div>
       <Button 
@@ -17,7 +17,7 @@
     <!-- Messages Area -->
     <div class="messages-area" ref="messagesContainer">
       <div v-if="messages.length === 0" class="welcome-screen">
-        <i class="pi pi-android" style="font-size: 4rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+        <i class="pi pi-android" :style="{ fontSize: 'var(--font-size-3xl)', color: 'var(--primary-color)', marginBottom: '1rem' }"></i>
         <h2>How can I help you today?</h2>
         <p>Ask me anything! I'm here to assist with your questions.</p>
         
@@ -230,7 +230,7 @@ onMounted(() => {
 
 .header-content h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   color: var(--text-color);
 }
 
@@ -257,11 +257,11 @@ onMounted(() => {
 
 .welcome-screen h2 {
   margin: 1rem 0 0.5rem;
-  font-size: 2rem;
+  font-size: var(--font-size-2xl);
 }
 
 .welcome-screen p {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   margin-bottom: 2rem;
 }
 
@@ -353,7 +353,7 @@ onMounted(() => {
 }
 
 .message-time {
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   margin-top: 0.25rem;
   opacity: 0.7;
 }
@@ -409,7 +409,7 @@ onMounted(() => {
   flex: 1;
   border-radius: 1.5rem;
   padding: 0.75rem 1rem;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   resize: none;
 }
 
@@ -424,7 +424,7 @@ onMounted(() => {
   margin-top: 0.5rem;
   text-align: center;
   color: var(--text-color-secondary);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 /* Scrollbar Styling */

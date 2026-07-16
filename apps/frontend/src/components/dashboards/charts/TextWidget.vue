@@ -24,7 +24,7 @@ defineProps({
 
 .text-widget-content {
   color: #ccc;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: 500;
   letter-spacing: 0.03em;
   margin: 0;

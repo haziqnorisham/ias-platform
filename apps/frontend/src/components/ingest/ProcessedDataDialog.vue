@@ -103,12 +103,12 @@ function closeDialog() {
 }
 
 .tight-table :deep(.p-datatable-thead > tr > th) {
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
     padding: 0.4rem 0.6rem;
 }
 
 .tight-table :deep(.p-datatable-tbody > tr > td) {
-    font-size: 0.78rem;
+    font-size: var(--font-size-sm);
     padding: 0.3rem 0.6rem;
 }
 
@@ -142,6 +142,6 @@ function closeDialog() {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
 }
 </style>

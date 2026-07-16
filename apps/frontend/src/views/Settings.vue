@@ -60,30 +60,30 @@ onMounted(async () => {
 
 .page-title {
   margin: 0 0 1rem 0;
-  font-size: 1.25rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
 }
 
 .config-table :deep(.p-datatable-tbody > tr > td) {
   padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
 }
 
 .config-table :deep(.p-datatable-thead > tr > th) {
   padding: 0.4rem 0.75rem;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 .config-key {
   color: #a0a0a0;
   font-family: monospace;
-  font-size: 0.82rem;
+  font-size: var(--font-size-sm);
 }
 
 .config-value {
   color: #e0e0e0;
   font-family: monospace;
-  font-size: 0.82rem;
+  font-size: var(--font-size-sm);
 }
 
 .sensitive-key {
@@ -108,14 +108,14 @@ onMounted(async () => {
 }
 
 .placeholder-icon {
-  font-size: 2.5rem;
+  font-size: var(--font-size-2xl);
   color: #666;
   margin-bottom: 1rem;
 }
 
 .placeholder-text {
   color: #666;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   margin: 0;
 }
 

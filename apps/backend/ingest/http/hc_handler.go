@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	ias_influx "ias/automation/db/influx"
 	ias_pg "ias/automation/db/pg"
 	"log/slog"
 	"net/http"
@@ -531,6 +532,18 @@ func DeleteDeviceProfile(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
+type deviceIngestResponse struct {
+	MessageID        int64     `json:"message_id"`
+	Topic            string    `json:"topic"`
+	Payload          string    `json:"payload"`
+	DeviceID         *string   `json:"device_id"`
+	IngestMethod     string    `json:"ingest_method"`
+	Status           string    `json:"status"`
+	Success          bool      `json:"success"`
+	ProcessedPayload string    `json:"processed_payload"`
+	ReceivedAt       time.Time `json:"received_at"`
+}
+
 // GetDeviceSuccessfulIngest handles POST /api/get_device_successful_ingest
 func GetDeviceSuccessfulIngest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -539,6 +552,7 @@ func GetDeviceSuccessfulIngest(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		DeviceID string `json:"device_id"`
+		Limit    int    `json:"limit"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
@@ -548,21 +562,67 @@ func GetDeviceSuccessfulIngest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"device_id is required"}`, http.StatusBadRequest)
 		return
 	}
+	if req.Limit <= 0 {
+		req.Limit = 1000
+	}
 	slog.Info("Retrieving successful ingest records for device", "device_id", req.DeviceID, "process", "hc_handler_main")
-	ias_db := ias_pg.NewPostgresStorage(nil)
-	records, err := ias_db.GetSuccessfulIngestByDeviceID(req.DeviceID)
+
+	points, err := ias_influx.QueryDeviceHistory(req.DeviceID, req.Limit)
 	if err != nil {
-		slog.Error("Failed to retrieve ingest summary", "device_id", req.DeviceID, "error", err)
-		http.Error(w, `{"error":"failed to retrieve ingest summary"}`, http.StatusInternalServerError)
+		slog.Error("Failed to retrieve ingest history", "device_id", req.DeviceID, "error", err)
+		http.Error(w, `{"error":"failed to retrieve ingest history"}`, http.StatusInternalServerError)
 		return
 	}
-	if records == nil {
-		records = []ias_pg.HcDeviceIngestSummary{}
+
+	if len(points) == 0 {
+		jsonData, _ := json.Marshal([]deviceIngestResponse{})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+		return
 	}
+
+	messageIDs := make([]int64, 0, len(points))
+	for _, p := range points {
+		if p.RawMessageID > 0 {
+			messageIDs = append(messageIDs, p.RawMessageID)
+		}
+	}
+
+	ias_db := ias_pg.NewPostgresStorage(nil)
+	rawIngests, err := ias_db.GetRawIngestByMessageIDs(messageIDs)
+	if err != nil {
+		slog.Error("Failed to fetch raw ingest metadata", "error", err)
+		http.Error(w, `{"error":"failed to fetch raw ingest metadata"}`, http.StatusInternalServerError)
+		return
+	}
+
+	records := make([]deviceIngestResponse, 0, len(points))
+	for _, p := range points {
+		processedJSON, _ := json.Marshal(p.Payload)
+
+		resp := deviceIngestResponse{
+			MessageID:        p.RawMessageID,
+			ProcessedPayload: string(processedJSON),
+			Success:          true,
+		}
+
+		if raw, ok := rawIngests[p.RawMessageID]; ok {
+			resp.Topic = raw.Topic
+			resp.Payload = raw.Payload
+			resp.DeviceID = raw.DeviceID
+			resp.IngestMethod = raw.IngestMethod
+			resp.Status = raw.Status
+			resp.ReceivedAt = raw.ReceivedAt
+		}
+
+		records = append(records, resp)
+	}
+
 	jsonData, err := json.Marshal(records)
 	if err != nil {
-		slog.Error("Failed to marshal ingest summary", "error", err)
-		http.Error(w, `{"error":"failed to marshal ingest summary"}`, http.StatusInternalServerError)
+		slog.Error("Failed to marshal ingest history", "error", err)
+		http.Error(w, `{"error":"failed to marshal ingest history"}`, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -602,47 +662,40 @@ func GetProcessedData(w http.ResponseWriter, r *http.Request) {
 		body.SortByID = "desc"
 	}
 
+	if body.Success != nil && !*body.Success {
+		jsonData, _ := json.Marshal(struct {
+			Records []ias_influx.ProcessedPoint `json:"records"`
+		}{Records: []ias_influx.ProcessedPoint{}})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+		return
+	}
+
 	slog.Info("Querying processed data records",
 		"limit", body.Limit,
 		"offset", body.Offset,
 		"sort_by_id", body.SortByID,
-		"success", body.Success,
 		"device_id", body.DeviceID,
 		"raw_message_id", body.RawMessageID,
 		"process", "hc_handler_main",
 	)
 
-	ias_db := ias_pg.NewPostgresStorage(nil)
-
-	records, err := ias_db.QueryProcessedData(body.Limit, body.Offset, body.SortByID, body.Success, body.DeviceID, body.RawMessageID)
+	records, err := ias_influx.QueryProcessedData(body.Limit, body.Offset, body.SortByID == "desc", body.DeviceID, body.RawMessageID)
 	if err != nil {
 		slog.Error("Failed to query processed data", "error", err, "process", "hc_handler_main")
 		http.Error(w, `{"error":"failed to query processed data"}`, http.StatusInternalServerError)
 		return
 	}
 
-	total, err := ias_db.CountProcessedData(body.Success, body.DeviceID, body.RawMessageID)
-	if err != nil {
-		slog.Error("Failed to count processed data records", "error", err, "process", "hc_handler_main")
-		http.Error(w, `{"error":"failed to count processed data records"}`, http.StatusInternalServerError)
-		return
-	}
-
 	slog.Info("Processed data records retrieved",
 		"count", len(records),
-		"total", total,
 		"process", "hc_handler_main",
 	)
 
-	if records == nil {
-		records = []ias_pg.HcProcessedData{}
-	}
-
 	response := struct {
-		Total   int                      `json:"total"`
-		Records []ias_pg.HcProcessedData `json:"records"`
+		Records []ias_influx.ProcessedPoint `json:"records"`
 	}{
-		Total:   total,
 		Records: records,
 	}
 
@@ -927,19 +980,13 @@ func DeleteDashboardHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // extractJSONValue parses a JSON string and traverses a dot-separated path to return the leaf value.
-// Returns nil if the JSON is invalid or any key in the path is missing.
-func extractJSONValue(payloadJSON string, path string) interface{} {
-	if payloadJSON == "" {
-		return nil
-	}
-
-	var root interface{}
-	if err := json.Unmarshal([]byte(payloadJSON), &root); err != nil {
+func extractValue(payload map[string]interface{}, path string) interface{} {
+	if payload == nil || path == "" {
 		return nil
 	}
 
 	keys := strings.Split(path, ".")
-	current := root
+	var current interface{} = payload
 	for _, key := range keys {
 		m, ok := current.(map[string]interface{})
 		if !ok {
@@ -954,9 +1001,26 @@ func extractJSONValue(payloadJSON string, path string) interface{} {
 	return current
 }
 
+func extractJSONValue(payloadJSON string, path string) interface{} {
+	if payloadJSON == "" {
+		return nil
+	}
+
+	var root map[string]interface{}
+	if err := json.Unmarshal([]byte(payloadJSON), &root); err != nil {
+		return nil
+	}
+
+	return extractValue(root, path)
+}
+
+const defaultTimeSeriesLimit = 100
+
 // GetDashboardMetric handles POST /api/get_dashboard_metric
-// Body: { metrics: [{ deviceID, column_name, data_type }] }
-// Returns the latest metric values extracted from processed data for the requested devices.
+// Body: { metrics: [{ type, deviceID, column_name, data_type, x_axis, y_axis }] }
+// Supports three metric types:
+//   - "card": returns the latest value extracted via column_name (backward compatible default)
+//   - "barchart" / "linechart": returns a time-series of x_axis / y_axis data points
 func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -964,9 +1028,12 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type MetricRequest struct {
+		Type       string `json:"type"`
 		DeviceID   string `json:"deviceID"`
 		ColumnName string `json:"column_name"`
 		DataType   string `json:"data_type"`
+		XAxis      string `json:"x_axis"`
+		YAxis      string `json:"y_axis"`
 	}
 
 	var req struct {
@@ -989,54 +1056,130 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, m := range req.Metrics {
-		if m.DeviceID == "" || m.ColumnName == "" {
-			http.Error(w, `{"error":"each metric requires deviceID and column_name"}`, http.StatusBadRequest)
+	type DataPoint struct {
+		X           interface{} `json:"x"`
+		Y           interface{} `json:"y"`
+		ProcessedAt *time.Time  `json:"processed_at"`
+	}
+
+	type MetricResponse struct {
+		Type        string      `json:"type"`
+		DeviceID    string      `json:"deviceID"`
+		ColumnName  string      `json:"column_name,omitempty"`
+		DataType    string      `json:"data_type,omitempty"`
+		XAxis       string      `json:"x_axis,omitempty"`
+		YAxis       string      `json:"y_axis,omitempty"`
+		Value       interface{} `json:"value,omitempty"`
+		DataPoints  []DataPoint `json:"data_points,omitempty"`
+		ProcessedAt *time.Time  `json:"processed_at,omitempty"`
+	}
+
+	// Validate and collect per-type device IDs
+	cardDeviceIDs := make(map[string]bool)
+	chartMetrics := make([]MetricRequest, 0)
+
+	for i, m := range req.Metrics {
+		if m.Type == "" {
+			m.Type = "card"
+			req.Metrics[i].Type = "card"
+		}
+
+		if m.DeviceID == "" {
+			http.Error(w, `{"error":"each metric requires deviceID"}`, http.StatusBadRequest)
+			return
+		}
+
+		switch m.Type {
+		case "card":
+			if m.ColumnName == "" {
+				http.Error(w, `{"error":"card metrics require column_name"}`, http.StatusBadRequest)
+				return
+			}
+			cardDeviceIDs[m.DeviceID] = true
+
+		case "barchart", "linechart":
+			if m.YAxis == "" {
+				http.Error(w, `{"error":"chart metrics require y_axis"}`, http.StatusBadRequest)
+				return
+			}
+			chartMetrics = append(chartMetrics, req.Metrics[i])
+
+		default:
+			http.Error(w, fmt.Sprintf(`{"error":"unknown metric type: %s"}`, m.Type), http.StatusBadRequest)
 			return
 		}
 	}
 
-	deviceIDSet := make(map[string]bool, len(req.Metrics))
-	for _, m := range req.Metrics {
-		deviceIDSet[m.DeviceID] = true
-	}
-	deviceIDs := make([]string, 0, len(deviceIDSet))
-	for id := range deviceIDSet {
+	deviceIDs := make([]string, 0, len(cardDeviceIDs))
+	for id := range cardDeviceIDs {
 		deviceIDs = append(deviceIDs, id)
 	}
 
 	slog.Info("Querying dashboard metrics",
 		"metric_count", len(req.Metrics),
-		"device_count", len(deviceIDs),
+		"card_device_count", len(deviceIDs),
+		"chart_metric_count", len(chartMetrics),
 		"process", "hc_handler_main",
 	)
 
-	ias_db := ias_pg.NewPostgresStorage(nil)
-	payloads, err := ias_db.GetLatestProcessedPayloadByDeviceIDs(deviceIDs)
+	// Fetch card metrics (latest payloads)
+	payloads, err := ias_influx.QueryLatestByDeviceIDs(deviceIDs)
 	if err != nil {
 		slog.Error("Failed to query dashboard metrics", "error", err, "process", "hc_handler_main")
 		http.Error(w, `{"error":"failed to query metrics"}`, http.StatusInternalServerError)
 		return
 	}
 
-	type MetricResponse struct {
-		DeviceID    string      `json:"deviceID"`
-		ColumnName  string      `json:"column_name"`
-		DataType    string      `json:"data_type"`
-		Value       interface{} `json:"value"`
-		ProcessedAt *time.Time  `json:"processed_at"`
-	}
-
+	// Build response
 	results := make([]MetricResponse, len(req.Metrics))
 	for i, m := range req.Metrics {
-		results[i] = MetricResponse{
-			DeviceID:   m.DeviceID,
-			ColumnName: m.ColumnName,
-			DataType:   m.DataType,
-		}
-		if latest, ok := payloads[m.DeviceID]; ok {
-			results[i].Value = extractJSONValue(latest.ProcessedPayload, m.ColumnName)
-			results[i].ProcessedAt = &latest.ProcessedAt
+		switch m.Type {
+		case "card":
+			results[i] = MetricResponse{
+				Type:       m.Type,
+				DeviceID:   m.DeviceID,
+				ColumnName: m.ColumnName,
+				DataType:   m.DataType,
+			}
+			if latest, ok := payloads[m.DeviceID]; ok {
+				results[i].Value = extractValue(latest.Payload, m.ColumnName)
+				results[i].ProcessedAt = &latest.MeasuredAt
+			}
+
+		case "barchart", "linechart":
+			results[i] = MetricResponse{
+				Type:     m.Type,
+				DeviceID: m.DeviceID,
+				XAxis:    m.XAxis,
+				YAxis:    m.YAxis,
+			}
+
+			points, err := ias_influx.QueryDeviceHistory(m.DeviceID, defaultTimeSeriesLimit)
+			if err != nil {
+				slog.Error("Failed to query time-series data",
+					"deviceID", m.DeviceID,
+					"error", err,
+					"process", "hc_handler_main",
+				)
+				results[i].DataPoints = []DataPoint{}
+				continue
+			}
+
+			dataPoints := make([]DataPoint, 0, len(points))
+			for _, p := range points {
+				dp := DataPoint{
+					Y: extractValue(p.Payload, m.YAxis),
+				}
+				pt := p.MeasuredAt
+				if m.XAxis == "" {
+					dp.X = pt
+				} else {
+					dp.X = extractValue(p.Payload, m.XAxis)
+				}
+				dp.ProcessedAt = &pt
+				dataPoints = append(dataPoints, dp)
+			}
+			results[i].DataPoints = dataPoints
 		}
 	}
 
@@ -1054,4 +1197,5 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
+
 }

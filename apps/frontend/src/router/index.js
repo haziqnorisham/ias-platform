@@ -13,9 +13,8 @@ import DeviceProfiles from '../views/DeviceProfiles.vue';
 import DataBrowser from '../views/DataBrowser.vue';
 import IngestLogs from '../views/IngestLogs.vue';
 import Settings from '../views/Settings.vue';
-import IntegrationsHub from '../views/IntegrationsHub.vue';
-import OnvifStreams from '../views/OnvifStreams.vue';
-import OnvifStreamDetail from '../views/OnvifStreamDetail.vue';
+import ExtensionsHub from '../views/ExtensionsHub.vue';
+import ExtensionDetail from '../views/ExtensionDetail.vue';
 import DashboardView from '../views/DashboardView.vue';
 import Login from '../views/Login.vue';
 
@@ -81,19 +80,14 @@ const routes = [
     component: Settings
   },
   {
-    path: '/integrations',
-    name: 'Integrations',
-    component: IntegrationsHub
+    path: '/extensions',
+    name: 'Extensions',
+    component: ExtensionsHub
   },
   {
-    path: '/integrations/onvif-streams',
-    name: 'OnvifStreams',
-    component: OnvifStreams
-  },
-  {
-    path: '/integrations/onvif-streams/:id',
-    name: 'OnvifStreamDetail',
-    component: OnvifStreamDetail
+    path: '/extensions/:name',
+    name: 'ExtensionDetail',
+    component: ExtensionDetail
   },
   {
     path: '/login',

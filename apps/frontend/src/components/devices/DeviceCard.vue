@@ -71,7 +71,7 @@ function onImageError() {
 }
 
 .detail-row {
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 20ch;
@@ -89,13 +89,13 @@ function onImageError() {
 
 .italic {
     font-style: italic;
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
 }
 
 .bold {
     margin-top: 0.25rem;
     font-weight: bold;
-    font-size: 1.25rem;
+    font-size: var(--font-size-xl);
     text-decoration: underline;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -113,7 +113,7 @@ function onImageError() {
 }
 
 .chip_style {
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     margin-top: 1rem;
 }
 

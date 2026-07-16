@@ -46,7 +46,7 @@
           textStyle: {
             color: THEME.textWhite,
             fontFamily: '"Space Grotesk", sans-serif',
-            fontSize: 12,
+            fontSize: 10,
           },
         },
         grid: {
@@ -62,7 +62,7 @@
           axisLabel: {
             color: THEME.textMuted,
             fontFamily: '"Space Grotesk", sans-serif',
-            fontSize: 11,
+            fontSize: 9,
           },
           axisLine: {
             lineStyle: {
@@ -78,7 +78,7 @@
           axisLabel: {
             color: THEME.textMuted,
             fontFamily: '"Space Grotesk", sans-serif',
-            fontSize: 11,
+            fontSize: 9,
           },
           axisLine: {
             show: false,

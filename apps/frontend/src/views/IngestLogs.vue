@@ -268,18 +268,18 @@ onMounted(() => {
 
 .italic {
     font-style: italic;
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
 }
 
 .bold {
     margin-top: 0.5rem;
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     text-decoration: underline;
 }
 
 .chip_style {
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     margin-top: 1rem;
     background-color: darkgreen;
 }
@@ -314,7 +314,7 @@ onMounted(() => {
     background-color: #212121;
     transition: background-color 0.2s ease;
     font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
 }
 
 .payload-cell:hover {
@@ -342,7 +342,7 @@ onMounted(() => {
 
 .modal-details pre {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     white-space: pre-wrap;
     word-wrap: break-word;
 }

@@ -243,7 +243,7 @@ function saveTitle() {
 }
 
 .header-title {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   color: #aaa;
   white-space: nowrap;
@@ -275,7 +275,7 @@ function saveTitle() {
 
 .drag-handle {
   color: #555;
-  font-size: 14px;
+  font-size: var(--font-size-md);
   letter-spacing: 2px;
   user-select: none;
   line-height: 1;
@@ -316,7 +316,7 @@ function saveTitle() {
 }
 
 .edit-section-label {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: #777;
   text-transform: uppercase;
@@ -330,7 +330,7 @@ function saveTitle() {
 }
 
 .edit-field label {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: #a0a0a0;
 }

@@ -146,13 +146,13 @@ const bodyStyle = computed(() => ({
 }
 
 .widget-header__icon {
-  font-size: 14px;
+  font-size: var(--font-size-md);
   line-height: 1;
   flex-shrink: 0;
 }
 
 .widget-header__title {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   color: var(--widget-title-color);
   white-space: nowrap;
@@ -173,7 +173,7 @@ const bodyStyle = computed(() => ({
 
 .widget-drag-handle {
   color: var(--widget-handle-color);
-  font-size: 14px;
+  font-size: var(--font-size-md);
   letter-spacing: 2px;
   user-select: none;
   line-height: 1;

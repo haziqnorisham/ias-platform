@@ -86,13 +86,13 @@ onMounted(async () => {
 }
 
 .card-icon {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   color: #888;
 }
 
 .card-name {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   color: #e0e0e0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,14 +106,14 @@ onMounted(async () => {
 }
 
 .meta-label {
-  font-size: 0.65rem;
+  font-size: var(--font-size-2xs);
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .meta-value {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: #888;
 }
 
@@ -135,7 +135,7 @@ onMounted(async () => {
 }
 
 .empty-icon {
-  font-size: 3rem;
+  font-size: var(--font-size-3xl);
   margin-bottom: 0.75rem;
   color: #444;
 }

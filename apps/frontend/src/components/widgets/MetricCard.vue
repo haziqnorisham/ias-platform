@@ -59,14 +59,14 @@ defineProps({
 }
 
 .metric-card__title {
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: 600;
   color: #aaa;
   margin-bottom: 8px;
 }
 
 .metric-card__value {
-  font-size: 2.5rem;
+  font-size: var(--font-size-2xl);
   font-weight: bold;
   color: var(--mc-value-color);
   line-height: 1.2;
@@ -81,13 +81,13 @@ defineProps({
 }
 
 .metric-card__value--error .error-icon {
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: #f44336;
   flex-shrink: 0;
 }
 
 .metric-card__subtitle {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: #777;
   margin-top: 4px;
 }

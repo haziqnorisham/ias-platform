@@ -20,7 +20,7 @@
         :i="item.i"
         class="grid-item"
       >
-        <WidgetWrapper  :title="item.type === 'card' ? item.cardTitle : item.type === 'stream' ? 'Live Stream' : ''">
+        <WidgetWrapper  :title="item.type === 'card' ? item.cardTitle : ''">
           <MetricCard v-if="item.type === 'card'" :title="item.cardTitle" :value="item.cardValue" />
           <BarChart
             v-else-if="item.type === 'barchart'"
@@ -35,7 +35,6 @@
           <div v-else-if="item.type === 'statictext'" class="static-text-widget">
             {{ item.text }}
           </div>
-          <StreamWidget v-else-if="item.type === 'stream'" />
         </WidgetWrapper>
       </GridItem>
     </GridLayout>
@@ -49,7 +48,6 @@ import MetricCard from '../components/widgets/MetricCard.vue'
 import BarChart from '../components/charts/BarChart.vue'
 import eSampleChart from '../components/charts/eSampleChart.vue'
 import WidgetWrapper from '../components/widgets/WidgetWrapper.vue'
-import StreamWidget from '../components/widgets/StreamWidget.vue'
 import { getAllDevices, getRawIngest } from '../api/posts'
 
 const totalDevices = ref(0)
@@ -63,7 +61,6 @@ const defaultLayout = [
   { x: 0, y: 2, w: 5, h: 4, i: '4', type: 'barchart' },
   { x: 5, y: 2, w: 7, h: 4, i: '5', type: 'esamplechart' },
   { x: 0, y: 6, w: 12, h: 1, i: '6', type: 'statictext', text: 'IAS - IOT DEV' },
-  { x: 0, y: 7, w: 12, h: 6, i: '7', type: 'stream' },
 ]
 
 const layout = ref(structuredClone(defaultLayout))
@@ -119,7 +116,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 100%;
-  font-size: 1.5rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
   color: #ccc;
   letter-spacing: 0.05em;

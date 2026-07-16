@@ -33,7 +33,7 @@ onMounted(() => {
       textStyle: {
         color: '#ffffff',
         fontFamily: '"Space Grotesk", sans-serif',
-        fontSize: 12,
+        fontSize: 10,
       },
     },
     grid: {
@@ -49,7 +49,7 @@ onMounted(() => {
       axisLabel: {
         color: '#6d6d6d',
         fontFamily: '"Space Grotesk", sans-serif',
-        fontSize: 10,
+        fontSize: 9,
       },
       axisLine: { lineStyle: { color: '#2a2a2e' } },
       axisTick: { show: false },
@@ -59,7 +59,7 @@ onMounted(() => {
       axisLabel: {
         color: '#6d6d6d',
         fontFamily: '"Space Grotesk", sans-serif',
-        fontSize: 10,
+        fontSize: 9,
       },
       splitLine: {
         lineStyle: { color: 'rgba(255,255,255,0.06)', type: 'dashed' },

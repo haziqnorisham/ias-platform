@@ -199,7 +199,7 @@ function handleDeleteRequest() {
 
 .form-field label {
     font-family: "Space Grotesk", sans-serif;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     font-weight: 600;
     color: #a0a0a0;
 }
@@ -213,7 +213,7 @@ function handleDeleteRequest() {
 }
 
 .toggle-label {
-    font-size: 0.8rem;
+    font-size: var(--font-size-sm);
     color: #a0a0a0;
     margin-top: 0.25rem;
 }

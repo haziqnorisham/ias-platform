@@ -36,19 +36,6 @@ const (
 	IngestStatusReprocess   = "reprocess"
 )
 
-// HcProcessedData represents a processed data record stored in PostgreSQL.
-type HcProcessedData struct {
-	ID               int64     `db:"id"`
-	RawMessageID     int64     `db:"raw_message_id"`
-	DeviceID         string    `db:"device_id"`
-	ProfileID        int       `db:"profile_id"`
-	ProcessedPayload string    `db:"processed_payload"`
-	Success          bool      `db:"success"`
-	ErrorMessage     string     `db:"error_message"`
-	ProcessedAt      time.Time  `db:"processed_at"`
-	MeasuredAt       *time.Time `db:"measured_at"`
-}
-
 // HcRawIngest represents a raw ingest message stored in PostgreSQL.
 type HcRawIngest struct {
 	MessageID    int64     `db:"message_id"`
@@ -69,24 +56,15 @@ type HcDashboard struct {
 }
 
 type HcIngestSummary struct {
-	ID              int       `db:"id"`
-	RawIngestID     int64     `db:"raw_ingest_id"`
-	LastProcessedID int64     `db:"last_processed_id"`
-	ProcessCount    int       `db:"process_count"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
-}
-
-type HcDeviceIngestSummary struct {
-	MessageID        int64     `json:"message_id"`
-	Topic            string    `json:"topic"`
-	Payload          string    `json:"payload"`
-	DeviceID         *string   `json:"device_id"`
-	IngestMethod     string    `json:"ingest_method"`
-	Status           string    `json:"status"`
-	ReceivedAt       time.Time `json:"received_at"`
-	ProcessedPayload string    `json:"processed_payload"`
-	Success          bool      `json:"success"`
+	ID           int       `db:"id"`
+	RawIngestID  int64     `db:"raw_ingest_id"`
+	DeviceID     string    `db:"device_id"`
+	ProfileID    int       `db:"profile_id"`
+	Success      bool      `db:"success"`
+	ErrorMessage string    `db:"error_message"`
+	ProcessCount int       `db:"process_count"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
@@ -119,17 +97,6 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 			created_date DATE DEFAULT CURRENT_DATE,
 			last_updated_date DATE DEFAULT CURRENT_DATE
 		);`,
-		`CREATE TABLE IF NOT EXISTS hc_processed_data (
-			id BIGSERIAL PRIMARY KEY,
-			raw_message_id BIGINT REFERENCES hc_raw_ingest(message_id),
-			device_id VARCHAR(50),
-			profile_id INT,
-			processed_payload JSONB DEFAULT '{}',
-			success BOOLEAN NOT NULL DEFAULT true,
-			error_message TEXT DEFAULT '',
-			processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			measured_at TIMESTAMPTZ
-		);`,
 		`CREATE TABLE IF NOT EXISTS hc_dashboards (
 			id SERIAL PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -140,14 +107,16 @@ func (p *PostgresStorage) CreateHcSchemaIfNotExists() error {
 		`CREATE TABLE IF NOT EXISTS hc_ingest_summary (
 			id SERIAL PRIMARY KEY,
 			raw_ingest_id BIGINT UNIQUE REFERENCES hc_raw_ingest(message_id),
-			last_processed_id BIGINT REFERENCES hc_processed_data(id),
+			device_id VARCHAR(50),
+			profile_id INT,
+			success BOOLEAN NOT NULL DEFAULT true,
+			error_message TEXT DEFAULT '',
 			process_count INT NOT NULL DEFAULT 1,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_processed_data_device_latest
-		   ON hc_processed_data (device_id, processed_at DESC)
-		   WHERE success = true;`,
+		`CREATE INDEX IF NOT EXISTS idx_ingest_summary_device
+		   ON hc_ingest_summary (device_id);`,
 	}
 
 	for _, q := range queries {
@@ -408,116 +377,23 @@ func (p *PostgresStorage) UpdateRawIngestStatus(messageID int64, status string) 
 	return err
 }
 
-// InsertProcessedData stores a processed data record. Returns the new record's ID.
-func (p *PostgresStorage) InsertProcessedData(data HcProcessedData) (int64, error) {
-	query := `INSERT INTO hc_processed_data (raw_message_id, device_id, profile_id, processed_payload, success, error_message) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;`
-	var id int64
-	err := p.DB.QueryRow(query, data.RawMessageID, data.DeviceID, data.ProfileID, data.ProcessedPayload, data.Success, data.ErrorMessage).Scan(&id)
-	return id, err
-}
-
 // UpsertIngestSummary creates or updates a summary row for a raw ingest record.
 // On first insert, process_count starts at 1. On subsequent reprocessing, the counter is incremented.
-func (p *PostgresStorage) UpsertIngestSummary(rawIngestID int64, lastProcessedID int64) error {
+func (p *PostgresStorage) UpsertIngestSummary(rawIngestID int64, deviceID string, profileID int, success bool, errorMessage string) error {
 	query := `
-		INSERT INTO hc_ingest_summary (raw_ingest_id, last_processed_id, process_count)
-		VALUES ($1, $2, 1)
+		INSERT INTO hc_ingest_summary (raw_ingest_id, device_id, profile_id, success, error_message, process_count)
+		VALUES ($1, $2, $3, $4, $5, 1)
 		ON CONFLICT (raw_ingest_id)
 		DO UPDATE SET
-			last_processed_id = $2,
+			device_id = $2,
+			profile_id = $3,
+			success = $4,
+			error_message = $5,
 			process_count = hc_ingest_summary.process_count + 1,
 			updated_at = NOW();
 	`
-	_, err := p.DB.Exec(query, rawIngestID, lastProcessedID)
+	_, err := p.DB.Exec(query, rawIngestID, deviceID, profileID, success, errorMessage)
 	return err
-}
-
-// QueryProcessedData retrieves processed data records with pagination and optional filters.
-func (p *PostgresStorage) QueryProcessedData(limit int, offset int, sortByID string, success *bool, deviceID string, rawMessageID *int64) ([]HcProcessedData, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-	sortByID = strings.ToLower(sortByID)
-	if sortByID != "asc" {
-		sortByID = "desc"
-	}
-
-	query := `SELECT id, raw_message_id, device_id, profile_id, processed_payload, success, error_message, processed_at, measured_at FROM hc_processed_data`
-	var conditions []string
-	var args []interface{}
-	argIdx := 1
-
-	if success != nil {
-		conditions = append(conditions, `success = $`+strconv.Itoa(argIdx))
-		args = append(args, *success)
-		argIdx++
-	}
-	if deviceID != "" {
-		conditions = append(conditions, `device_id = $`+strconv.Itoa(argIdx))
-		args = append(args, deviceID)
-		argIdx++
-	}
-	if rawMessageID != nil {
-		conditions = append(conditions, `raw_message_id = $`+strconv.Itoa(argIdx))
-		args = append(args, *rawMessageID)
-		argIdx++
-	}
-
-	if len(conditions) > 0 {
-		query += ` WHERE ` + strings.Join(conditions, ` AND `)
-	}
-	query += ` ORDER BY id ` + sortByID + ` LIMIT $` + strconv.Itoa(argIdx) + ` OFFSET $` + strconv.Itoa(argIdx+1) + `;`
-	args = append(args, limit, offset)
-
-	rows, err := p.DB.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var records []HcProcessedData
-	for rows.Next() {
-		var r HcProcessedData
-		if err := rows.Scan(&r.ID, &r.RawMessageID, &r.DeviceID, &r.ProfileID, &r.ProcessedPayload, &r.Success, &r.ErrorMessage, &r.ProcessedAt, &r.MeasuredAt); err != nil {
-			return nil, err
-		}
-		records = append(records, r)
-	}
-	return records, rows.Err()
-}
-
-// CountProcessedData returns the total number of processed records matching optional filters.
-func (p *PostgresStorage) CountProcessedData(success *bool, deviceID string, rawMessageID *int64) (int, error) {
-	query := `SELECT COUNT(*) FROM hc_processed_data`
-	var conditions []string
-	var args []interface{}
-	argIdx := 1
-
-	if success != nil {
-		conditions = append(conditions, `success = $`+strconv.Itoa(argIdx))
-		args = append(args, *success)
-		argIdx++
-	}
-	if deviceID != "" {
-		conditions = append(conditions, `device_id = $`+strconv.Itoa(argIdx))
-		args = append(args, deviceID)
-		argIdx++
-	}
-	if rawMessageID != nil {
-		conditions = append(conditions, `raw_message_id = $`+strconv.Itoa(argIdx))
-		args = append(args, *rawMessageID)
-		argIdx++
-	}
-
-	if len(conditions) > 0 {
-		query += ` WHERE ` + strings.Join(conditions, ` AND `)
-	}
-
-	var total int
-	if err := p.DB.QueryRow(query, args...).Scan(&total); err != nil {
-		return 0, err
-	}
-	return total, nil
 }
 
 // InsertDashboard stores a new dashboard and returns the created row.
@@ -596,59 +472,23 @@ func (p *PostgresStorage) BatchUpdateRawIngestStatus(messageIDs []int64, status 
 	return result.RowsAffected()
 }
 
-// GetSuccessfulIngestByDeviceID returns all raw ingest records for a device whose
-// last processed record was successful, along with the processed payload.
-func (p *PostgresStorage) GetSuccessfulIngestByDeviceID(deviceID string) ([]HcDeviceIngestSummary, error) {
-	query := `
-		SELECT r.message_id, r.topic, r.payload, r.device_id, r.ingest_method, r.status, r.received_at,
-		       p.processed_payload, p.success
-		FROM hc_raw_ingest r
-		JOIN hc_ingest_summary s ON s.raw_ingest_id = r.message_id
-		JOIN hc_processed_data p ON p.id = s.last_processed_id
-		WHERE r.device_id = $1 AND p.success = true
-		ORDER BY r.message_id DESC;
-	`
-	rows, err := p.DB.Query(query, deviceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []HcDeviceIngestSummary
-	for rows.Next() {
-		var r HcDeviceIngestSummary
-		if err := rows.Scan(&r.MessageID, &r.Topic, &r.Payload, &r.DeviceID, &r.IngestMethod, &r.Status, &r.ReceivedAt, &r.ProcessedPayload, &r.Success); err != nil {
-			return nil, err
-		}
-		results = append(results, r)
-	}
-	return results, rows.Err()
-}
-
-// LatestPayload holds the most recent processed payload and its timestamp for a device.
-type LatestPayload struct {
-	ProcessedPayload string
-	ProcessedAt      time.Time
-}
-
-// GetLatestProcessedPayloadByDeviceIDs returns the latest successfully processed payload
-// for each device in the provided list. Devices with no processed data are omitted from the result.
-func (p *PostgresStorage) GetLatestProcessedPayloadByDeviceIDs(deviceIDs []string) (map[string]LatestPayload, error) {
-	if len(deviceIDs) == 0 {
-		return map[string]LatestPayload{}, nil
+// GetRawIngestByMessageIDs fetches raw ingest records for a batch of message IDs.
+// Returns a map keyed by message_id. IDs not found are simply omitted from the result.
+func (p *PostgresStorage) GetRawIngestByMessageIDs(messageIDs []int64) (map[int64]HcRawIngest, error) {
+	if len(messageIDs) == 0 {
+		return map[int64]HcRawIngest{}, nil
 	}
 
-	placeholders := make([]string, len(deviceIDs))
-	args := make([]interface{}, len(deviceIDs))
-	for i, id := range deviceIDs {
+	placeholders := make([]string, len(messageIDs))
+	args := make([]interface{}, len(messageIDs))
+	for i, id := range messageIDs {
 		placeholders[i] = `$` + strconv.Itoa(i+1)
 		args[i] = id
 	}
 
-	query := `SELECT DISTINCT ON (device_id) device_id, processed_payload, processed_at
-		FROM hc_processed_data
-		WHERE device_id IN (` + strings.Join(placeholders, `, `) + `) AND success = true
-		ORDER BY device_id, processed_at DESC`
+	query := `SELECT message_id, topic, payload, device_id, ingest_method, status, received_at
+		FROM hc_raw_ingest
+		WHERE message_id IN (` + strings.Join(placeholders, `, `) + `)`
 
 	rows, err := p.DB.Query(query, args...)
 	if err != nil {
@@ -656,14 +496,13 @@ func (p *PostgresStorage) GetLatestProcessedPayloadByDeviceIDs(deviceIDs []strin
 	}
 	defer rows.Close()
 
-	result := make(map[string]LatestPayload)
+	result := make(map[int64]HcRawIngest, len(messageIDs))
 	for rows.Next() {
-		var deviceID string
-		var lp LatestPayload
-		if err := rows.Scan(&deviceID, &lp.ProcessedPayload, &lp.ProcessedAt); err != nil {
+		var r HcRawIngest
+		if err := rows.Scan(&r.MessageID, &r.Topic, &r.Payload, &r.DeviceID, &r.IngestMethod, &r.Status, &r.ReceivedAt); err != nil {
 			return nil, err
 		}
-		result[deviceID] = lp
+		result[r.MessageID] = r
 	}
 	return result, rows.Err()
 }
