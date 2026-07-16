@@ -43,10 +43,10 @@ func initLogger() {
 
 func loadEnv() {
 	if err := godotenv.Load(".env"); err != nil {
-		slog.Error("Failed to load .env file", "error", err)
-		os.Exit(1)
+		slog.Warn(".env file not found, falling back to OS environment", "error", err)
+	} else {
+		slog.Info("Environment variables loaded from .env", "process", "main")
 	}
-	slog.Info("Environment variables loaded", "process", "main")
 }
 
 func initAuthIfEnabled() {
