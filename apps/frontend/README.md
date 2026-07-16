@@ -1,38 +1,62 @@
-# ias_hc
+# IAS Platform — Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Vue 3 SPA front-end for the IAS Platform, built with Vite.
 
-## Recommended IDE Setup
+## Stack
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- **Vue 3** — Composition API (`<script setup>`)
+- **Vite 7** — dev server + production bundler
+- **PrimeVue 4** — UI component library (Aura dark theme)
+- **ECharts 6** — charting (dashboards)
+- **Vue Router** — SPA routing
 
-## Recommended Browser Setup
+## Quick Start
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### Prerequisites
 
-## Customize configuration
+- Node.js 20.19+ or 22.12+
+- Backend services running (see [backend README](../backend/README.md))
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+### Setup
 
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### Development
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+The Vite dev server starts at **http://localhost:5173** and proxies:
+- `/api` → `http://localhost:9090` (main IAS backend)
+- `/media` → `http://localhost:8080` (media server, prefix stripped)
+
+Configure proxy targets in `vite.config.js` if your backend runs on different ports.
+
+### Production Build
 
 ```sh
 npm run build
 ```
+
+Output goes to `dist/`. In production, serve `dist/` with **nginx** (or any static file server) and proxy `/api` and `/media` to the backend. See the root `nginx.conf` for a pre-built nginx configuration.
+
+## Project Structure
+
+```
+src/
+├── api/           # API client modules (posts.js, extensions.js, auth.js)
+├── components/    # Reusable Vue components
+│   ├── charts/    # Legacy chart components
+│   ├── dashboards/# Dashboard editor, viewer, chart widgets
+│   └── widgets/   # WidgetWrapper, MetricCard
+├── composables/   # Vue composables (useAuth)
+├── router/        # Vue Router config
+└── views/         # Page-level components
+```
+
+## Docker Deployment
+
+The front-end is built and served by nginx in the Docker Compose stack at the [repository root](../../). See the root `README.md`.

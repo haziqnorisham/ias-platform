@@ -1,66 +1,68 @@
-# IAS Automations
+# IAS Platform — Backend
 
-Backend for **IAS_HC** front-end UI. Also data ingest endpoint.
+Go-based IoT data ingest and automation backend serving the IAS Platform front-end.
 
 ## Stack
 
-- Go
-- PosgresSQL
-- IndluxDB
-- Redis
+- **Go** 1.26 — HTTP server (stdlib `net/http`), worker pool, MQTT client
+- **PostgreSQL** — operational ledger (devices, dashboards, raw ingest records)
+- **InfluxDB** 2.7 — time-series storage for decoded/processed device data
+- **Redis** — cache layer
 
-## Specs
-- Architecture: x86-64
-- OS: Ubuntu 24.04 LTS
+## Quick Start (Local Development)
 
-## Start (Manual)
+### Prerequisites
 
-### 1. Connect to Linux host via VSCode
-- VSCode auto-install deps on target machine
+- Go 1.26+
+- PostgreSQL, InfluxDB 2, and Redis running locally (or via [Docker Compose](../../docker-compose.yaml))
+- Node.js 20+ (for the front-end; front-end is served separately in dev)
 
-### 2. Install Go
-
-```bash
-wget https://go.dev/dl/go1.26.1.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.26.1.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a ~/.profile
-source /etc/profile
-```
-Verify:
+### 1. Configure environment
 
 ```bash
-go version
-# go version go1.26.1 linux/amd64
+cp example.env .env
+# Edit .env with your database credentials, ports, and feature flags
 ```
-### 3. Install Delve (debugger)
+
+### 2. Build & Run
 
 ```bash
-go install -v github.com/go-delve/delve/cmd/dlv@latest
+make dev        # build the binary
+make run-dev    # or run without building (go run .)
 ```
-### 4. Git config
+
+The server listens on `HTTP_SERVER_PORT` (default from `example.env`: `8080`).
+
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `dev` | Build the Go binary |
+| `run-dev` | Run with `go run .` |
+| `clean` | Remove the built binary |
+| `clean-build` | Alias for `clean` |
+
+## Environment Variables
+
+See `example.env` for a complete reference. Key variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `HTTP_SERVER_PORT` | `8080` | HTTP listen port |
+| `HTTP_SERVER_AUTOSTART` | `true` | Start the HTTP server |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host |
+| `REDIS_HOST` | `localhost` | Redis host |
+| `INFLUXDB_URL` | — | InfluxDB server URL |
+| `IAS_HC_BACKEND_ENABLE` | `true` | Enable API routes |
+| `IAS_ENABLE_EXTENSION` | `false` | Enable extension system |
+| `MQTT_ENABLED` | `true` | Enable MQTT sensor ingest |
+| `WORKER_ENABLED` | `true` | Enable background worker (decodes raw ingest → InfluxDB) |
+| `AUTH_ENABLED` | `false` | Enable LDAP authentication |
+
+## Docker Deployment
+
+Docker artifacts live at the [repository root](../../). See the root `README.md` or run:
 
 ```bash
-git config --global user.name "YOUR_NAME"
-git config --global user.email "YOUR_EMAIL"
+docker compose up -d
 ```
-### 5. VSCode Go extension
-
-Install from marketplace
-
-### 6. Install Redis (cache)
-
-```bash
-sudo apt-get install lsb-release curl gpg
-curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-sudo apt-get update
-sudo apt-get install redis
-```
-Enable Redis:
-
-```bash
-sudo systemctl enable redis-server
-sudo systemctl start redis-server
-```
-Done. Go build stuff.
