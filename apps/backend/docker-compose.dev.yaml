@@ -1,0 +1,86 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+    tmpfs:
+      - /data
+    networks:
+      - dev-network
+
+  influxdb2:
+    image: influxdb:2.7-alpine
+    container_name: influxdb2-dev
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=myapp_db
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin123
+      - INFLUXDB_HTTP_AUTH_ENABLED=false
+    tmpfs:
+      - /var/lib/influxdb2
+    networks:
+      - dev-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=devuser
+      - POSTGRES_PASSWORD=devpass
+      - POSTGRES_DB=myapp_db
+      - PGDATA=/dev/shm/pgdata
+    tmpfs:
+      - /dev/shm:exec,size=2g
+    shm_size: 2gb
+    command: postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+    networks:
+      - dev-network
+
+  lldap:
+    image: lldap/lldap:stable
+    ports:
+      # For LDAP, not recommended to expose, see Usage section.
+      - "3890:3890"
+      # For LDAPS (LDAP Over SSL), enable port if LLDAP_LDAPS_OPTIONS__ENABLED set true, look env below
+      #- "6360:6360"
+      # For the web front-end
+      - "17170:17170"
+    volumes:
+      #- "lldap_data:/data"
+      # Alternatively, you can mount a local folder
+      - "./lldap_data:/data"
+    environment:
+      - UID=0
+      - GID=0
+      - TZ=Asia/Kuala Lumpur
+      - LLDAP_JWT_SECRET=REPLACE_WITH_RANDOM
+      - LLDAP_KEY_SEED=REPLACE_WITH_RANDOM
+      - LLDAP_LDAP_BASE_DN=dc=example,dc=com
+      - LLDAP_LDAP_USER_PASS=CHANGE_ME # If the password contains '$', escape it (e.g. Pas$$word sets Pas$word)
+      # If using LDAPS, set enabled true and configure cert and key path
+      # - LLDAP_LDAPS_OPTIONS__ENABLED=true
+      # - LLDAP_LDAPS_OPTIONS__CERT_FILE=/path/to/certfile.crt
+      # - LLDAP_LDAPS_OPTIONS__KEY_FILE=/path/to/keyfile.key
+      # You can also set a different database:
+      # - LLDAP_DATABASE_URL=mysql://mysql-user:password@mysql-server/my-database
+      # - LLDAP_DATABASE_URL=postgres://postgres-user:password@postgres-server/my-database
+      # If using SMTP, set the following variables
+      # - LLDAP_SMTP_OPTIONS__ENABLE_PASSWORD_RESET=true
+      # - LLDAP_SMTP_OPTIONS__SERVER=smtp.example.com
+      # - LLDAP_SMTP_OPTIONS__PORT=465 # Check your smtp provider's documentation for this setting
+      # - LLDAP_SMTP_OPTIONS__SMTP_ENCRYPTION=TLS # How the connection is encrypted, either "NONE" (no encryption, port 25), "TLS" (sometimes called SSL, port 465) or "STARTTLS" (sometimes called TLS, port 587).
+      # - LLDAP_SMTP_OPTIONS__USER=no-reply@example.com # The SMTP user, usually your email address
+      # - LLDAP_SMTP_OPTIONS__PASSWORD=PasswordGoesHere # The SMTP password
+      # - LLDAP_SMTP_OPTIONS__FROM=no-reply <no-reply@example.com> # The header field, optional: how the sender appears in the email. The first is a free-form name, followed by an email between <>.
+      # - LLDAP_SMTP_OPTIONS__TO=admin <admin@example.com> # Same for reply-to, optional.
+      # - LLDAP_HTTP_URL=https://lldap.example.com # URL used in the email template to compose the reset link
+
+networks:
+  dev-network:
+    driver: bridge

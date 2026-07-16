@@ -1,0 +1,121 @@
+package http
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"time"
+)
+
+var IsRunning = false
+var currentServer *http.Server
+
+func SetupRoutes() {
+	http.Handle("/api/image/", http.StripPrefix("/api/image/", http.FileServer(http.Dir("public"))))
+
+	if os.Getenv("IAS_HC_BACKEND_ENABLE") == "true" {
+		http.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			time.Sleep(0 * time.Second)
+			w.Write([]byte("{\"status\": \"OK\", \"delay\": \"0s\"}"))
+		})
+		http.HandleFunc("/api/get_all_devices", func(w http.ResponseWriter, r *http.Request) {
+			GetAllDevices(w, r)
+		})
+		http.HandleFunc("/api/get_device", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceByIDHandler(w, r)
+		})
+		http.HandleFunc("/api/create_device", func(w http.ResponseWriter, r *http.Request) {
+			CreateDevice(w, r)
+		})
+		http.HandleFunc("/api/update_device", func(w http.ResponseWriter, r *http.Request) {
+			UpdateDeviceHandler(w, r)
+		})
+		http.HandleFunc("/api/delete_device", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDeviceHandler(w, r)
+		})
+		http.HandleFunc("/api/get_device_successful_ingest", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceSuccessfulIngest(w, r)
+		})
+		http.HandleFunc("/api/get_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
+			GetRawIngest(w, r)
+		})
+		http.HandleFunc("/api/get_processed_data", func(w http.ResponseWriter, r *http.Request) {
+			GetProcessedData(w, r)
+		})
+		http.HandleFunc("/api/reprocess_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
+			ReprocessRawIngest(w, r)
+		})
+		http.HandleFunc("/api/get_server_config", func(w http.ResponseWriter, r *http.Request) {
+			GetServerConfig(w, r)
+		})
+		http.HandleFunc("/api/get_device_profiles", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceProfiles(w, r)
+		})
+		http.HandleFunc("/api/get_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			GetDeviceProfileByID(w, r)
+		})
+		http.HandleFunc("/api/create_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			CreateDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/update_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			UpdateDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/delete_device_profile", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDeviceProfile(w, r)
+		})
+		http.HandleFunc("/api/save_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			SaveDashboard(w, r)
+		})
+		http.HandleFunc("/api/get_dashboards", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboards(w, r)
+		})
+		http.HandleFunc("/api/get_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboard(w, r)
+		})
+		http.HandleFunc("/api/delete_dashboard", func(w http.ResponseWriter, r *http.Request) {
+			DeleteDashboardHandler(w, r)
+		})
+		http.HandleFunc("/api/get_dashboard_metric", func(w http.ResponseWriter, r *http.Request) {
+			GetDashboardMetric(w, r)
+		})
+	}
+
+	if authEnabled() {
+		http.HandleFunc("/api/auth/login", AuthLogin)
+		http.HandleFunc("/api/auth/logout", AuthLogout)
+		http.HandleFunc("/api/auth/session", AuthSession)
+	}
+
+	mountFrontend()
+}
+func StartServer() {
+	currentServer = &http.Server{Addr: ":" + os.Getenv("HTTP_SERVER_PORT")}
+	go func() {
+		IsRunning = true
+		slog.Info("Server started on "+currentServer.Addr, "address", currentServer.Addr, "process", "main")
+		if err := currentServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("HTTP server error", "error", err)
+		}
+	}()
+	time.Sleep(100 * time.Millisecond) // Give it a moment to start
+}
+
+func StopServer() {
+	if currentServer == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := currentServer.Shutdown(ctx); err != nil {
+		slog.Error("HTTP server forced shutdown", "error", err)
+	}
+	IsRunning = false
+	slog.Info("HTTP server stopped gracefully")
+}
