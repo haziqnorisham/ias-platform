@@ -29,9 +29,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server starts at **http://localhost:5173** and proxies:
-- `/api` → `http://localhost:9090` (main IAS backend)
-- `/media` → `http://localhost:8080` (media server, prefix stripped)
+The Vite dev server starts at **http://localhost:5173** and proxies `/api` → `http://localhost:9090` (main IAS backend).
 
 Configure proxy targets in `vite.config.js` if your backend runs on different ports.
 
@@ -41,7 +39,7 @@ Configure proxy targets in `vite.config.js` if your backend runs on different po
 npm run build
 ```
 
-Output goes to `dist/`. In production, serve `dist/` with **nginx** (or any static file server) and proxy `/api` and `/media` to the backend. See the root `nginx.conf` for a pre-built nginx configuration.
+Output goes to `dist/`. In production, serve `dist/` with **nginx** (or any static file server) and proxy `/api` to the backend. See the root `nginx.conf` for a pre-built nginx configuration.
 
 ## Project Structure
 

@@ -7,24 +7,21 @@
 - `@` import alias resolves to `./src` (configured in `vite.config.js`)
 - Package manager is **npm**
 
-## Required Backends
+## Required Backend
 
-Two backends **must** be running for the app to function:
+The following must be running for the app to function:
 
 | Backend | Port | Proxy prefix |
 |---|---|---|
 | Main IAS backend | `:9090` | `/api` |
-| IAS Media Server (Go) | `:8080` | `/media` (prefix stripped) |
 
-Vite dev server (`:5173`) proxies both. In production, the deployment server must handle these proxies.
+Vite dev server (`:5173`) proxies `/api` to the backend. In production, nginx handles the proxy.
 
 ## API Patterns
 
 **Main backend (`src/api/posts.js`):** All endpoints use `POST` with JSON body (RPC-style). Example: `POST /api/get_all_devices`, `POST /api/save_dashboard`.
 
-**Media server (`src/api/media.js`):** RESTful convention. `GET /api/devices`, `POST /api/devices`, `PUT /api/devices/{id}`, etc. The `/media` prefix is added by the frontend and stripped by Vite proxy.
-
-Both modules share the base `apiFetch()` from `src/api/index.js` which prepends `http://localhost:5173` as the base URL.
+Both modules share the base `apiFetch()` from `src/api/index.js`.
 
 ## Key Commands
 

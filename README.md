@@ -14,7 +14,6 @@ Industrial IoT automation and data ingest platform. Ingests device telemetry via
 │  Nginx (:80)                                    │
 │    /         → SPA static files (Vue 3)         │
 │    /api/*    → Go backend (:9090)               │
-│    /media/*  → Media server (:8080)             │
 └──────────────────────┬──────────────────────────┘
                        │
          ┌─────────────┼─────────────┐
@@ -150,7 +149,7 @@ docker compose up -d --build
 | `docker-compose.yaml` | Service orchestration |
 | `Dockerfile.backend` | Go backend (multi-stage: build → alpine runtime) |
 | `Dockerfile.frontend` | Vue 3 frontend (multi-stage: node build → nginx serve) |
-| `nginx.conf` | SPA fallback + `/api` and `/media` reverse proxy |
+| `nginx.conf` | SPA fallback + `/api` reverse proxy |
 | `.env.docker` | Docker-specific environment variables |
 
 ## Environment Configuration

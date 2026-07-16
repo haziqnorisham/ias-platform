@@ -8,11 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig({
   server: {
     proxy: {
-      '/api': 'http://localhost:9090',
-      '/media': {
-        target: 'http://localhost:8080',
-        rewrite: (path) => path.replace(/^\/media/, '')
-      }
+      '/api': 'http://localhost:9090'
     }
   },
   plugins: [
