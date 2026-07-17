@@ -6,13 +6,30 @@
     <div v-else-if="error" class="chart-overlay chart-overlay--error">
       <i class="pi pi-exclamation-triangle" style="font-size: 1.5rem; color: #e57373"></i>
     </div>
+    <div v-else-if="hasData" class="chart-actions">
+      <Button
+        :icon="zoomActive ? 'pi pi-times' : 'pi pi-search-plus'"
+        text
+        size="small"
+        :title="zoomActive ? 'Cancel zoom' : 'Drag to zoom'"
+        @click.stop="toggleZoom"
+      />
+      <Button
+        icon="pi pi-undo"
+        text
+        size="small"
+        title="Reset zoom"
+        @click.stop="resetZoom"
+      />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import ProgressSpinner from 'primevue/progressspinner'
+import Button from 'primevue/button'
 
 const props = defineProps({
   title: { type: String, default: 'Line Chart' },
@@ -22,10 +39,34 @@ const props = defineProps({
 })
 
 const chartContainer = ref(null)
+const zoomActive = ref(false)
 let chart = null
 let resizeObserver = null
 
+const hasData = computed(() => props.dataPoints && props.dataPoints.length > 0)
+
 const PRIMARY = '#48897b'
+
+function toggleZoom() {
+  if (!chart) return
+  zoomActive.value = !zoomActive.value
+  chart.dispatchAction({
+    type: 'takeGlobalCursor',
+    key: 'dataZoomSelect',
+    dataZoomSelectActive: zoomActive.value,
+  })
+}
+
+function resetZoom() {
+  if (!chart) return
+  zoomActive.value = false
+  chart.dispatchAction({
+    type: 'takeGlobalCursor',
+    key: 'dataZoomSelect',
+    dataZoomSelectActive: false,
+  })
+  chart.dispatchAction({ type: 'restore' })
+}
 
 function buildOption(dataPoints) {
   const hasData = dataPoints && dataPoints.length > 0
@@ -111,6 +152,14 @@ function buildOption(dataPoints) {
         },
       },
     ],
+    dataZoom: [
+      {
+        type: 'inside',
+        xAxisIndex: [0],
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+      },
+    ],
   }
 }
 
@@ -173,5 +222,14 @@ function handleResize() {
 
 .chart-overlay--error {
   background: rgba(26, 26, 26, 0.7);
+}
+
+.chart-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  z-index: 1;
 }
 </style>

@@ -108,6 +108,9 @@ watch(
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
+  background-color: #0e0e10;
+  background-image: radial-gradient(#28282c 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 .content {
