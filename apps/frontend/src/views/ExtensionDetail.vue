@@ -35,7 +35,7 @@ onMounted(async () => {
       <span>{{ error }}</span>
     </div>
 
-    <component v-else :is="tagName" />
+    <component v-else :is="tagName" :key="extensionName" />
   </div>
 </template>
 

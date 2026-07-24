@@ -19,6 +19,8 @@ import (
 type ExtensionManifest struct {
 	Name      string   `json:"name"`
 	Command   []string `json:"command"`
+	Type      string   `json:"type"`     // "local" (default) or "remote"
+	URL       string   `json:"url"`      // required for "remote"
 	Enabled   bool     `json:"enabled"`
 	TimeoutMs int      `json:"timeout_ms"`
 }
@@ -26,6 +28,8 @@ type ExtensionManifest struct {
 type ExtensionInstance struct {
 	Name    string
 	Port    int
+	URL     string
+	Type    string
 	Command []string
 	Process *os.Process
 }
@@ -56,11 +60,26 @@ func (m *ExtensionManager) Load(manifest ExtensionManifest) error {
 		return fmt.Errorf("extension %s is already loaded", manifest.Name)
 	}
 
-	if len(manifest.Command) == 0 {
-		return fmt.Errorf("extension %s has no command", manifest.Name)
+	if manifest.Type == "" {
+		manifest.Type = "local"
 	}
 	if manifest.TimeoutMs <= 0 {
 		manifest.TimeoutMs = 10000
+	}
+
+	switch manifest.Type {
+	case "local":
+		return m.loadLocal(manifest)
+	case "remote":
+		return m.loadRemote(manifest)
+	default:
+		return fmt.Errorf("extension %s has unknown type %q", manifest.Name, manifest.Type)
+	}
+}
+
+func (m *ExtensionManager) loadLocal(manifest ExtensionManifest) error {
+	if len(manifest.Command) == 0 {
+		return fmt.Errorf("extension %s has no command", manifest.Name)
 	}
 
 	cmd := exec.Command(manifest.Command[0], manifest.Command[1:]...)
@@ -90,6 +109,7 @@ func (m *ExtensionManager) Load(manifest ExtensionManifest) error {
 	instance := &ExtensionInstance{
 		Name:    manifest.Name,
 		Port:    port,
+		Type:    "local",
 		Command: manifest.Command,
 		Process: cmd.Process,
 	}
@@ -98,8 +118,37 @@ func (m *ExtensionManager) Load(manifest ExtensionManifest) error {
 
 	slog.Info("Extension loaded",
 		"name", instance.Name,
+		"type", instance.Type,
 		"port", instance.Port,
 		"pid", instance.Process.Pid,
+	)
+
+	return nil
+}
+
+func (m *ExtensionManager) loadRemote(manifest ExtensionManifest) error {
+	if manifest.URL == "" {
+		return fmt.Errorf("remote extension %s has no url", manifest.Name)
+	}
+
+	healthURL := manifest.URL + "/health"
+	if err := m.healthCheck(healthURL, time.Duration(manifest.TimeoutMs)*time.Millisecond); err != nil {
+		return fmt.Errorf("extension %s: %w", manifest.Name, err)
+	}
+
+	instance := &ExtensionInstance{
+		Name: manifest.Name,
+		Port: 0,
+		URL:  manifest.URL,
+		Type: "remote",
+	}
+
+	m.extensions[manifest.Name] = instance
+
+	slog.Info("Extension loaded",
+		"name", instance.Name,
+		"type", instance.Type,
+		"url", instance.URL,
 	)
 
 	return nil
@@ -114,19 +163,21 @@ func (m *ExtensionManager) Unload(name string) error {
 		return fmt.Errorf("extension %s is not loaded", name)
 	}
 
-	if err := instance.Process.Signal(os.Interrupt); err == nil {
-		done := make(chan struct{})
-		go func() {
-			instance.Process.Wait()
-			close(done)
-		}()
-		select {
-		case <-done:
-		case <-time.After(5 * time.Second):
+	if instance.Process != nil {
+		if err := instance.Process.Signal(os.Interrupt); err == nil {
+			done := make(chan struct{})
+			go func() {
+				instance.Process.Wait()
+				close(done)
+			}()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				instance.Process.Kill()
+			}
+		} else {
 			instance.Process.Kill()
 		}
-	} else {
-		instance.Process.Kill()
 	}
 
 	delete(m.extensions, name)
@@ -154,7 +205,7 @@ func (m *ExtensionManager) Call(name string, action string, params map[string]in
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("http://localhost:%d/execute", instance.Port)
+	url := m.buildExecuteURL(instance)
 	resp, err := m.httpClient.Post(url, "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("extension %s call failed: %w", name, err)
@@ -175,11 +226,20 @@ func (m *ExtensionManager) List() []map[string]interface{} {
 
 	result := make([]map[string]interface{}, 0, len(m.extensions))
 	for _, instance := range m.extensions {
-		result = append(result, map[string]interface{}{
+		entry := map[string]interface{}{
 			"name": instance.Name,
 			"port": instance.Port,
-			"pid":  instance.Process.Pid,
-		})
+			"type": instance.Type,
+		}
+		if instance.Process != nil {
+			entry["pid"] = instance.Process.Pid
+		} else {
+			entry["pid"] = 0
+		}
+		if instance.URL != "" {
+			entry["url"] = instance.URL
+		}
+		result = append(result, entry)
 	}
 	return result
 }
@@ -195,25 +255,48 @@ func (m *ExtensionManager) GetPort(name string) (int, bool) {
 	return instance.Port, true
 }
 
+func (m *ExtensionManager) GetTarget(name string) (string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	instance, ok := m.extensions[name]
+	if !ok {
+		return "", false
+	}
+	if instance.Type == "remote" {
+		return instance.URL, true
+	}
+	return fmt.Sprintf("http://localhost:%d", instance.Port), true
+}
+
+func (m *ExtensionManager) buildExecuteURL(instance *ExtensionInstance) string {
+	if instance.Type == "remote" {
+		return instance.URL + "/execute"
+	}
+	return fmt.Sprintf("http://localhost:%d/execute", instance.Port)
+}
+
 func (m *ExtensionManager) Shutdown() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for name, instance := range m.extensions {
 		slog.Info("Shutting down extension", "name", name)
-		if err := instance.Process.Signal(os.Interrupt); err == nil {
-			done := make(chan struct{})
-			go func() {
-				instance.Process.Wait()
-				close(done)
-			}()
-			select {
-			case <-done:
-			case <-time.After(5 * time.Second):
+		if instance.Process != nil {
+			if err := instance.Process.Signal(os.Interrupt); err == nil {
+				done := make(chan struct{})
+				go func() {
+					instance.Process.Wait()
+					close(done)
+				}()
+				select {
+				case <-done:
+				case <-time.After(5 * time.Second):
+					instance.Process.Kill()
+				}
+			} else {
 				instance.Process.Kill()
 			}
-		} else {
-			instance.Process.Kill()
 		}
 	}
 
@@ -327,6 +410,11 @@ func LoadManifests(dir string) ([]ExtensionManifest, error) {
 			var manifest ExtensionManifest
 			if err := json.Unmarshal(data, &manifest); err != nil {
 				slog.Warn("Invalid extension manifest, skipping", "path", manifestPath, "error", err)
+				continue
+			}
+
+			if manifest.Type == "remote" && manifest.URL == "" {
+				slog.Warn("Remote extension manifest missing url, skipping", "path", manifestPath)
 				continue
 			}
 

@@ -8,8 +8,18 @@ import PrimeVue from 'primevue/config';
 import router from './router';
 
 import "./assets/css/main.css"
-import 'primeicons/primeicons.css'  
+import 'primeicons/primeicons.css'
+
+const widgetRegistry = {}
+
+window.__ias_registerWidget = (name, factory) => {
+  widgetRegistry[name] = factory
+}
+
+window.__ias_getWidget = (name) => widgetRegistry[name]
+
 const app = createApp(App)
+app.config.compilerOptions.isCustomElement = (tag) => tag.startsWith('extension-')
 app.use(ToastService)
 app.use(PrimeVue, {
     theme: {

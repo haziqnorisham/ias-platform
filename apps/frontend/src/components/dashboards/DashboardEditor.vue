@@ -30,6 +30,16 @@
           <Button icon="pi pi-pen-to-square" label="Text" size="small" severity="secondary" @click="addText" />
         </ButtonGroup>
       </div>
+      <div v-if="extWidgets.length" class="toolbar-section">
+        <Button
+          label="Extension Widgets"
+          icon="pi pi-box"
+          size="small"
+          severity="secondary"
+          @click="toggleExtMenu"
+        />
+        <Menu ref="extMenu" :model="extMenuModel" :popup="true" />
+      </div>
     </div>
 
     <div class="canvas-area">
@@ -66,15 +76,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { GridLayout, GridItem } from 'vue3-grid-layout'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
+import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
 import EditorWidget from './EditorWidget.vue'
 import { getAllDevices, saveDashboard, getDashboard, deleteDashboard } from '@/api/posts'
+import { getExtensions, getExtensionWidgets } from '@/api/extensions'
 
 const router = useRouter()
 const route = useRoute()
@@ -87,6 +99,34 @@ const dashboardName = ref('')
 const deviceOptions = ref([])
 
 const layout = ref([])
+const extWidgets = ref([])
+const extMenu = ref(null)
+
+const extMenuModel = computed(() => {
+  const groups = {}
+  for (const ew of extWidgets.value) {
+    if (!groups[ew.extName]) groups[ew.extName] = []
+    groups[ew.extName].push(ew)
+  }
+  const items = []
+  let first = true
+  for (const [extName, widgets] of Object.entries(groups)) {
+    if (!first) items.push({ separator: true })
+    first = false
+    for (const w of widgets) {
+      items.push({
+        label: `${extName} → ${w.label}`,
+        icon: 'pi pi-box',
+        command: () => addExtensionWidget(w),
+      })
+    }
+  }
+  return items
+})
+
+function toggleExtMenu(event) {
+  extMenu.value?.toggle(event)
+}
 
 let nextId = 1
 
@@ -102,6 +142,8 @@ onMounted(async () => {
       value: String(d.Id)
     }))
   }).catch(() => { deviceOptions.value = [] })
+
+  loadExtWidgets()
 
   const idParam = route.query.id
   if (idParam) {
@@ -192,6 +234,38 @@ function addText() {
     type: 'text',
     textTitle: 'New Text',
     textContent: 'Double-click to edit this text.'
+  })
+}
+
+async function loadExtWidgets() {
+  try {
+    const exts = await getExtensions()
+    const all = []
+    for (const ext of exts) {
+      const widgets = await getExtensionWidgets(ext.name)
+      for (const w of widgets) {
+        all.push({ extName: ext.name, ...w })
+      }
+    }
+    extWidgets.value = all
+  } catch {
+    extWidgets.value = []
+  }
+}
+
+function addExtensionWidget(ew) {
+  const maxY = layout.value.reduce((max, item) => Math.max(max, item.y + item.h), 0)
+  layout.value.push({
+    x: 0,
+    y: maxY,
+    w: ew.w || 4,
+    h: ew.h || 4,
+    i: String(nextId++),
+    type: 'extension',
+    extensionName: ew.extName,
+    widgetId: ew.id,
+    widgetLabel: ew.label,
+    widgetConfig: ew.config || {},
   })
 }
 
@@ -311,6 +385,15 @@ async function handleDelete() {
 .toolbar-section {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.toolbar-label {
+  font-size: 0.72rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 .canvas-area {

@@ -2,7 +2,8 @@
   <div class="widget-wrapper" :class="[`widget-wrapper--${variant}`, { 'widget-wrapper--no-header': !headerVisible }]">
     <div v-if="headerVisible" class="widget-header">
       <div class="widget-header__leading">
-        <span v-if="icon" class="widget-header__icon" aria-hidden="true">{{ icon }}</span>
+        <i v-if="icon && icon.startsWith('pi ')" :class="icon" class="widget-header__icon" aria-hidden="true" />
+        <span v-else-if="icon" class="widget-header__icon" aria-hidden="true">{{ icon }}</span>
         <span v-if="title" class="widget-header__title">{{ title }}</span>
       </div>
 
@@ -149,6 +150,7 @@ const bodyStyle = computed(() => ({
   font-size: var(--font-size-md);
   line-height: 1;
   flex-shrink: 0;
+  color: #666;
 }
 
 .widget-header__title {

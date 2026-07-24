@@ -72,7 +72,10 @@
         class="grid-item"
         :static="true"
       >
-        <WidgetWrapper :title="item.type === 'card' ? item.cardTitle : item.type === 'barchart' ? item.chartTitle : item.type === 'linechart' ? item.lineChartTitle : item.type === 'table' ? item.tableTitle : item.type === 'text' ? item.textTitle : ''">
+        <WidgetWrapper
+          :title="item.type === 'card' ? item.cardTitle : item.type === 'barchart' ? item.chartTitle : item.type === 'linechart' ? item.lineChartTitle : item.type === 'table' ? item.tableTitle : item.type === 'text' ? item.textTitle : item.type === 'extension' ? item.widgetLabel : ''"
+          :icon="item.type === 'extension' ? 'pi pi-box' : ''"
+        >
           <MetricCard
             v-if="item.type === 'card'"
             :title="item.cardTitle"
@@ -84,6 +87,11 @@
           <LineChartWidget v-else-if="item.type === 'linechart'" :title="item.lineChartTitle" :dataPoints="widgetData[item.i]?.dataPoints" :loading="widgetData[item.i]?.loading ?? false" :error="widgetData[item.i]?.error ?? false" />
           <TableWidget v-else-if="item.type === 'table'" :title="item.tableTitle" />
           <TextWidget v-else-if="item.type === 'text'" :title="item.textTitle" :text="item.textContent" />
+          <ExtensionWidget
+            v-else-if="item.type === 'extension'"
+            :widget-key="`${item.extensionName}:${item.widgetId}`"
+            :config="item.widgetConfig"
+          />
         </WidgetWrapper>
       </GridItem>
     </GridLayout>
@@ -105,6 +113,7 @@ import BarChartWidget from '@/components/dashboards/charts/BarChartWidget.vue'
 import LineChartWidget from '@/components/dashboards/charts/LineChartWidget.vue'
 import TableWidget from '@/components/dashboards/charts/TableWidget.vue'
 import TextWidget from '@/components/dashboards/charts/TextWidget.vue'
+import ExtensionWidget from '@/components/widgets/ExtensionWidget.vue'
 import { getDashboard, getDashboardMetric } from '@/api/posts'
 
 const route = useRoute()
@@ -327,6 +336,25 @@ watch(refreshInterval, () => {
   startPolling()
 })
 
+const widgetScripts = new Set()
+
+async function loadExtensionWidgets(layoutData) {
+  for (const item of layoutData) {
+    if (item.type === 'extension' && !widgetScripts.has(item.extensionName)) {
+      widgetScripts.add(item.extensionName)
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = `/api/extensions/${item.extensionName}/widget.js`
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      }).catch(() => {
+        widgetScripts.delete(item.extensionName)
+      })
+    }
+  }
+}
+
 onMounted(async () => {
   const idParam = route.query.id
   console.log('[DashboardView] onMounted — route.query.id:', idParam)
@@ -338,9 +366,9 @@ onMounted(async () => {
     console.log('[DashboardView] onMounted — getDashboard raw response:', JSON.stringify(data))
     if (data && data.layout_json) {
       const parsed = JSON.parse(data.layout_json)
-      console.log('[DashboardView] onMounted — parsed layout:', JSON.stringify(parsed))
-      layout.value = Array.isArray(parsed) ? parsed : []
-      console.log('[DashboardView] onMounted — layout.value count:', layout.value.length)
+      const parsedLayout = Array.isArray(parsed) ? parsed : []
+      await loadExtensionWidgets(parsedLayout)
+      layout.value = parsedLayout
     } else {
       console.log('[DashboardView] onMounted — no layout_json in response')
     }

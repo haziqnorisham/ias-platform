@@ -73,27 +73,27 @@ func ServeExtensionUI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	port, ok := mgr.GetPort(name)
+	targetAddr, ok := mgr.GetTarget(name)
 	if !ok {
 		http.Error(w, fmt.Sprintf("extension %q not found", name), http.StatusNotFound)
 		return
 	}
 
-	target, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
+	target, err := url.Parse(targetAddr)
 	if err != nil {
-		slog.Error("Failed to parse extension target URL", "extension", name, "port", port, "error", err)
+		slog.Error("Failed to parse extension target URL", "extension", name, "url", targetAddr, "error", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		slog.Error("Extension UI proxy error", "extension", name, "port", port, "error", err)
+		slog.Error("Extension UI proxy error", "extension", name, "url", targetAddr, "error", err)
 		http.Error(w, fmt.Sprintf("extension %q unreachable", name), http.StatusBadGateway)
 	}
 
 	r.URL.Path = forwardPath
 	slog.Debug("Proxying extension request",
-		"extension", name, "port", port, "forward", forwardPath, "process", "extension_handler")
+		"extension", name, "url", targetAddr, "forward", forwardPath, "process", "extension_handler")
 	proxy.ServeHTTP(w, r)
 }

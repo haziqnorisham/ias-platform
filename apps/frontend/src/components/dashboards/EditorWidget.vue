@@ -10,6 +10,7 @@
           {{ widgetTitle }}
         </span>
         <Button
+          v-if="widget.type !== 'extension'"
           icon="pi pi-pencil"
           severity="secondary"
           text
@@ -37,6 +38,10 @@
       <LineChartWidget v-else-if="widget.type === 'linechart'" :title="widget.lineChartTitle" />
       <TableWidget v-else-if="widget.type === 'table'" :title="widget.tableTitle" />
       <TextWidget v-else-if="widget.type === 'text'" :title="widget.textTitle" :text="widget.textContent" />
+      <div v-else-if="widget.type === 'extension'" class="extension-widget-placeholder">
+        <i class="pi pi-puzzle-piece ext-placeholder-icon"></i>
+        <span class="ext-placeholder-label">{{ widget.widgetLabel }}</span>
+      </div>
     </div>
 
     <Dialog
@@ -116,6 +121,7 @@ const widgetTitle = computed(() => {
     case 'linechart': return props.widget.lineChartTitle
     case 'table': return props.widget.tableTitle
     case 'text': return props.widget.textTitle
+    case 'extension': return props.widget.widgetLabel || 'Extension Widget'
     default: return props.widget.cardTitle || '—'
   }
 })
@@ -343,5 +349,25 @@ function saveTitle() {
   border: none;
   border-top: 1px solid #212121;
   margin: 1.5rem 0;
+}
+
+.extension-widget-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: #555;
+}
+
+.ext-placeholder-icon {
+  font-size: 1.5rem;
+  color: #48897b;
+}
+
+.ext-placeholder-label {
+  font-size: 0.78rem;
+  color: #888;
 }
 </style>

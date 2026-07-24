@@ -4,6 +4,19 @@ export const getExtensions = () => apiFetch('/api/extensions', {
   method: 'POST'
 })
 
+export async function getExtensionWidgets(name) {
+  try {
+    const resp = await fetch(`/api/extensions/${name}/health`, {
+      credentials: 'same-origin',
+    })
+    if (!resp.ok) return []
+    const data = await resp.json()
+    return data.widgets || []
+  } catch {
+    return []
+  }
+}
+
 export function loadExtensionComponent(name) {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-extension="${name}"]`)
