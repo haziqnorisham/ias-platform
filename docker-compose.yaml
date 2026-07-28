@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     env_file: .env.docker
     volumes:
-      - ./apps/backend/extensions:/app/extensions
+      - ./app_data/backend/extensions:/app/extensions
     depends_on:
       redis:
         condition: service_healthy
@@ -23,7 +23,7 @@ services:
     container_name: ias-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       - backend
     networks:
@@ -34,7 +34,7 @@ services:
     container_name: ias-redis
     restart: unless-stopped
     volumes:
-      - redis-data:/data
+      - ./app_data/redis-data:/data
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -45,15 +45,28 @@ services:
       - ias-network
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18
     container_name: ias-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: devuser
-      POSTGRES_PASSWORD: devpass
-      POSTGRES_DB: myapp_db
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_USER: ias_platform_admin
+      POSTGRES_DB: ias_platform_db
+    ports:
+      - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./app_data/postgres-data:/var/lib/postgresql
+    networks:
+      - ias-network
+
+  adminer:
+    image: adminer
+    container_name: ias_adminer
+    restart: unless-stopped
+    ports:
+      - "7070:8080"
+    depends_on:
+      - postgres
     networks:
       - ias-network
 
@@ -63,13 +76,14 @@ services:
     restart: unless-stopped
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: admin123
-      DOCKER_INFLUXDB_INIT_ORG: camart
-      DOCKER_INFLUXDB_INIT_BUCKET: ias_processed
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: _kXrl6YnahcxV3UPr0CJp7uoeqQDFWfYiDkILGoBofhaj7SMLmZ160A7L58N89M_PJSzguZNdXfhNjoE53pPVw==
+      DOCKER_INFLUXDB_INIT_USERNAME: ias_admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: changeme
+      DOCKER_INFLUXDB_INIT_ORG: ias
+      DOCKER_INFLUXDB_INIT_BUCKET: ias_bucket
+    ports:
+      - "8086:8086"
     volumes:
-      - influxdb-data:/var/lib/influxdb2
+      - ./app_data/influxdb-data:/var/lib/influxdb2
     networks:
       - ias-network
 
@@ -87,9 +101,9 @@ services:
       LLDAP_JWT_SECRET: REPLACE_WITH_RANDOM
       LLDAP_KEY_SEED: REPLACE_WITH_RANDOM
       LLDAP_LDAP_BASE_DN: dc=example,dc=com
-      LLDAP_LDAP_USER_PASS: CHANGEME
+      LLDAP_LDAP_USER_PASS: changeme
     volumes:
-      - lldap-data:/data
+      - ./app_data/lldap-data:/data
     networks:
       - ias-network
 
