@@ -80,6 +80,7 @@ services:
       DOCKER_INFLUXDB_INIT_PASSWORD: changeme
       DOCKER_INFLUXDB_INIT_ORG: ias
       DOCKER_INFLUXDB_INIT_BUCKET: ias_bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: _kXrl6YnahcxV3UPr0CJp7uoeqQDFWfYiDkILGoBofhaj7SMLmZ160A7L58N89M_PJSzguZNdXfhNjoE53pPVw==
     ports:
       - "8086:8086"
     volumes:
