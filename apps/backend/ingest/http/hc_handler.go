@@ -764,6 +764,9 @@ func ReprocessRawIngest(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetServerConfig handles POST /api/get_server_config
+// Configuration comes from the process environment, which is populated either by
+// godotenv (from .env in dev, see main.go) or by the container runtime in Docker
+// (compose env_file). This avoids depending on a physical .env file on disk.
 func GetServerConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -772,26 +775,12 @@ func GetServerConfig(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("Retrieving server configuration", "process", "hc_handler_main")
 
-	data, err := os.ReadFile(".env")
-	if err != nil {
-		slog.Error("Failed to read .env file", "error", err, "process", "hc_handler_main")
-		http.Error(w, `{"error":"failed to read configuration"}`, http.StatusInternalServerError)
-		return
-	}
-
 	config := make(map[string]string)
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
+	for _, pair := range os.Environ() {
+		key, val, ok := strings.Cut(pair, "=")
+		if !ok || key == "" {
 			continue
 		}
-		idx := strings.Index(line, "=")
-		if idx == -1 {
-			continue
-		}
-		key := strings.TrimSpace(line[:idx])
-		val := strings.TrimSpace(line[idx+1:])
-		val = strings.Trim(val, `"'`)
 
 		upper := strings.ToUpper(key)
 		if strings.Contains(upper, "PASSWORD") || strings.Contains(upper, "TOKEN") || strings.Contains(upper, "SECRET") {
