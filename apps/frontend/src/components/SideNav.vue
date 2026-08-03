@@ -5,10 +5,12 @@ import Card from 'primevue/card'
 import Menu from 'primevue/menu'
 import { useAuth } from '../composables/useAuth'
 import { usePermissions } from '../composables/usePermissions'
+import { useSidebar } from '../composables/useSidebar'
 
 const router = useRouter()
 const { currentUser, isAdmin, logout } = useAuth()
 const { isNavItemVisible } = usePermissions()
+const { sidebarVisible } = useSidebar()
 const menu = ref()
 
 const menuItems = [
@@ -53,7 +55,7 @@ const navigate = (to) => {
 </script>
 
 <template>
-    <div class="sidenav">
+    <div class="sidenav" :class="{ 'sidenav--hidden': !sidebarVisible }">
         <div class="logo-container">
             <img src="/bitmap.png" alt="IAS Logo" class="logo" />
         </div>
@@ -100,7 +102,12 @@ const navigate = (to) => {
     display: flex;
     flex-direction: column;
     border-radius: 0px;
+    transition: transform 0.2s ease;
 
+}
+
+.sidenav--hidden {
+    transform: translateX(-100%);
 }
 
 .logo-container {

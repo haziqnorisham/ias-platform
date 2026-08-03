@@ -5,10 +5,13 @@ import Breadcrumb from 'primevue/breadcrumb';
 import ScrollPanel from 'primevue/scrollpanel';
 import Footer from "./components/Footer.vue";
 import Toast from 'primevue/toast';
+import Button from 'primevue/button';
 import { ref, watch, computed } from "vue";
 import { useRoute } from 'vue-router';
+import { useSidebar } from './composables/useSidebar';
 
 const route = useRoute();
+const { sidebarVisible, toggleSidebar } = useSidebar();
 
 const isLoginPage = computed(() => route.name === 'Login')
 
@@ -76,7 +79,17 @@ watch(
 
   <template v-if="!isLoginPage">
     <SideNav />
-    <main class="main">
+    <Button
+      :icon="sidebarVisible ? 'pi pi-chevron-left' : 'pi pi-chevron-right'"
+      class="sidebar-toggle"
+      :class="{ 'sidebar-toggle--collapsed': !sidebarVisible }"
+      text
+      rounded
+      size="small"
+      :title="sidebarVisible ? 'Hide sidebar' : 'Show sidebar'"
+      @click="toggleSidebar"
+    />
+    <main class="main" :class="{ 'main--expanded': !sidebarVisible }">
       <Breadcrumb :home="home" :model="items" class="breadcrumb" />
       <div class="routerView">
         <router-view />
@@ -111,6 +124,23 @@ watch(
   background-color: #0e0e10;
   background-image: radial-gradient(#28282c 1px, transparent 1px);
   background-size: 24px 24px;
+  transition: left 0.2s ease;
+}
+
+.main--expanded {
+  left: 0;
+}
+
+.sidebar-toggle {
+  position: fixed;
+  top: 12px;
+  left: calc(16rem + 8px);
+  z-index: 100;
+  transition: left 0.2s ease;
+}
+
+.sidebar-toggle--collapsed {
+  left: 8px;
 }
 
 .content {
