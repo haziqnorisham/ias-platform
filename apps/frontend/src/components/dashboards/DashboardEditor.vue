@@ -15,6 +15,7 @@
           size="small"
           @click="handleDelete"
         />
+        <Button label="Dashboard Settings" icon="pi pi-cog" severity="secondary" text size="small" @click="openSettings" />
         <Button label="Cancel" icon="pi pi-times" severity="secondary" text size="small" @click="handleCancel" />
         <Button label="Save Dashboard" icon="pi pi-save" size="small" :loading="saving" @click="handleSave" />
       </div>
@@ -72,6 +73,24 @@
         <p class="placeholder-text">Drag widgets here or use the toolbar to add content</p>
       </div>
     </div>
+
+    <Dialog v-model:visible="settingsVisible" header="Dashboard Settings" :modal="true" :style="{ width: '420px' }">
+      <div class="settings-field">
+        <label for="defaultTimeRange">Default Time Range</label>
+        <Select
+          id="defaultTimeRange"
+          v-model="defaultTimeRange"
+          :options="timeRangeOptions"
+          optionLabel="label"
+          optionValue="value"
+          style="width: 100%"
+        />
+      </div>
+      <template #footer>
+        <Button label="Cancel" icon="pi pi-times" severity="secondary" text @click="settingsVisible = false" />
+        <Button label="Apply" icon="pi pi-check" @click="applySettings" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -83,6 +102,8 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import ButtonGroup from 'primevue/buttongroup'
 import Menu from 'primevue/menu'
+import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import EditorWidget from './EditorWidget.vue'
 import { getAllDevices, saveDashboard, getDashboard, deleteDashboard } from '@/api/posts'
@@ -95,6 +116,30 @@ const saving = ref(false)
 
 const dashboardId = ref(null)
 const dashboardName = ref('')
+
+const settingsVisible = ref(false)
+const defaultTimeRange = ref('24h')
+
+const timeRangeOptions = [
+  { label: 'Last 5 min', value: '5m' },
+  { label: 'Last 30 min', value: '30m' },
+  { label: 'Last 1 hour', value: '1h' },
+  { label: 'Last 12 hours', value: '12h' },
+  { label: 'Last 24 hours', value: '24h' },
+  { label: 'Last 7 days', value: '7d' },
+  { label: 'Last 30 days', value: '30d' },
+  { label: 'Last 1 year', value: '365d' },
+  { label: 'Custom...', value: 'custom' },
+]
+
+function openSettings() {
+  settingsVisible.value = true
+}
+
+function applySettings() {
+  settingsVisible.value = false
+  toast.add({ severity: 'success', summary: 'Settings applied successfully', life: 3000 })
+}
 
 const deviceOptions = ref([])
 
@@ -370,6 +415,18 @@ async function handleDelete() {
 .header-right {
   display: flex;
   gap: 0.5rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-field label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #a0a0a0;
 }
 
 .editor-toolbar {
