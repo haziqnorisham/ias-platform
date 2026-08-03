@@ -1,12 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import Menu from 'primevue/menu'
 import { useAuth } from '../composables/useAuth'
+import { usePermissions } from '../composables/usePermissions'
 
 const router = useRouter()
-const { currentUser, logout } = useAuth()
+const { currentUser, isAdmin, logout } = useAuth()
+const { isNavItemVisible } = usePermissions()
 const menu = ref()
 
 const menuItems = [
@@ -41,6 +43,10 @@ const navItems = [
 
 ]
 
+const visibleNavItems = computed(() =>
+  navItems.filter(item => isNavItemVisible(item.to, isAdmin.value))
+)
+
 const navigate = (to) => {
   router.push(to)
 }
@@ -52,7 +58,7 @@ const navigate = (to) => {
             <img src="/bitmap.png" alt="IAS Logo" class="logo" />
         </div>
 
-        <div v-for="item in navItems" :key="item.to" class="nav-card" @click="navigate(item.to)">
+        <div v-for="item in visibleNavItems" :key="item.to" class="nav-card" @click="navigate(item.to)">
             <Card class="nav-card-card" :class="{ 'active': $route.path === item.to }">
                 <template #content>
                     <div class="card-content">

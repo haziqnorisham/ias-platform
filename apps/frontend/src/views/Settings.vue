@@ -3,25 +3,54 @@
   <ProgressSpinner v-if="loading" class="global-spinner" />
 
   <div class="page-container">
-    <h2 class="page-title">Server Configuration</h2>
+    <h2 class="page-title">Settings</h2>
 
-    <DataTable v-if="configEntries.length" :value="configEntries" size="small" scrollable scrollHeight="flex" tableStyle="min-width: 40rem" class="config-table">
-      <Column field="key" header="Key">
-        <template #body="{ data }">
-          <span class="config-key" :class="{ 'sensitive-key': data.sensitive }">{{ data.key }}</span>
-        </template>
-      </Column>
-      <Column field="value" header="Value">
-        <template #body="{ data }">
-          <code class="config-value" :class="{ 'sensitive-value': data.sensitive }">{{ data.value }}</code>
-        </template>
-      </Column>
-    </DataTable>
+    <Tabs value="server-details">
+      <TabList>
+        <Tab value="server-details">Server Details</Tab>
+        <Tab value="user-permissions">User Permissions</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="server-details">
+          <DataTable v-if="configEntries.length" :value="configEntries" size="small" scrollable scrollHeight="flex" tableStyle="min-width: 40rem" class="config-table">
+            <Column field="key" header="Key">
+              <template #body="{ data }">
+                <span class="config-key" :class="{ 'sensitive-key': data.sensitive }">{{ data.key }}</span>
+              </template>
+            </Column>
+            <Column field="value" header="Value">
+              <template #body="{ data }">
+                <code class="config-value" :class="{ 'sensitive-value': data.sensitive }">{{ data.value }}</code>
+              </template>
+            </Column>
+          </DataTable>
 
-    <div v-else-if="!loading" class="placeholder-card">
-      <i class="pi pi-cog placeholder-icon"></i>
-      <p class="placeholder-text">No configuration data available.</p>
-    </div>
+          <div v-else-if="!loading" class="placeholder-card">
+            <i class="pi pi-cog placeholder-icon"></i>
+            <p class="placeholder-text">No configuration data available.</p>
+          </div>
+        </TabPanel>
+
+        <TabPanel value="user-permissions">
+          <div class="permissions-section">
+            <p class="permissions-hint">
+              Select the pages that <strong>viewer</strong> users can see on the sidebar. Admins always see everything.
+            </p>
+            <div v-for="page in permissionPages" :key="page.to" class="permission-row">
+              <span class="permission-label">{{ page.label }}</span>
+              <ToggleSwitch
+                :modelValue="viewerPermissions[page.to]"
+                :disabled="!isAdmin"
+                @update:modelValue="val => setViewerPermission(page.to, val)"
+              />
+            </div>
+            <p v-if="!isAdmin" class="permissions-note">
+              <i class="pi pi-lock"></i> Only admins can change these settings.
+            </p>
+          </div>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   </div>
 </template>
 
@@ -31,10 +60,20 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import BlockUI from 'primevue/blockui'
 import ProgressSpinner from 'primevue/progressspinner'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
+import ToggleSwitch from 'primevue/toggleswitch'
 import { getServerConfig } from '@/api/posts'
+import { useAuth } from '@/composables/useAuth'
+import { usePermissions, permissionPages } from '@/composables/usePermissions'
 
 const loading = ref(false)
 const configEntries = ref([])
+const { isAdmin } = useAuth()
+const { viewerPermissions, setViewerPermission } = usePermissions()
 
 onMounted(async () => {
   loading.value = true
@@ -117,6 +156,43 @@ onMounted(async () => {
   color: #666;
   font-size: var(--font-size-md);
   margin: 0;
+}
+
+.permissions-section {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 480px;
+}
+
+.permissions-hint {
+  color: #a0a0a0;
+  font-size: var(--font-size-sm);
+  margin: 0 0 1rem 0;
+}
+
+.permission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #212121;
+}
+
+.permission-row:last-of-type {
+  border-bottom: none;
+}
+
+.permission-label {
+  color: #e0e0e0;
+  font-size: var(--font-size-sm);
+}
+
+.permissions-note {
+  color: #888;
+  font-size: var(--font-size-xs);
+  margin: 1rem 0 0 0;
 }
 
 .global-spinner {
