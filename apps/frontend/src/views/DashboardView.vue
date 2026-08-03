@@ -205,7 +205,6 @@ function computeStartTime() {
 function buildMetricsPayload() {
   const metrics = []
   for (const item of layout.value) {
-    console.log('[DashboardView] buildMetricsPayload — item:', JSON.stringify({ i: item.i, type: item.type, config: item.config }))
     if (item.config?.query?.deviceID) {
       if (item.type === 'card') {
         metrics.push({
@@ -229,11 +228,8 @@ function buildMetricsPayload() {
           y_axis: item.config.query.y_axis || ''
         })
       }
-    } else {
-      console.log('[DashboardView] buildMetricsPayload — SKIPPED (no deviceID):', item.i, item.type)
     }
   }
-  console.log('[DashboardView] buildMetricsPayload — payload:', JSON.stringify({ metrics }))
   return { metrics, start: computeStartTime() }
 }
 
@@ -245,22 +241,24 @@ function formatValue(value, dataType) {
 }
 
 function lookupResult(results, deviceID, columnName) {
-  console.log('[DashboardView] lookupResult — looking for deviceID:', deviceID, 'column_name:', columnName, 'in results:', JSON.stringify(results))
   if (!results) return undefined
   for (const m of results) {
     if (m.deviceID === deviceID && m.column_name === columnName) {
-      console.log('[DashboardView] lookupResult — FOUND:', m.value)
       return m.value
     }
   }
-  console.log('[DashboardView] lookupResult — NOT FOUND')
   return undefined
 }
 
-function lookupChartResult(results, deviceID) {
+function lookupChartResult(results, deviceID, yAxis, xAxis) {
   if (!results) return null
   for (const m of results) {
-    if (m.deviceID === deviceID && m.data_points) {
+    if (
+      m.deviceID === deviceID &&
+      m.y_axis === yAxis &&
+      m.x_axis === xAxis &&
+      m.data_points
+    ) {
       return m.data_points
     }
   }
@@ -302,7 +300,7 @@ async function fetchWidgetData() {
           }
         }
       } else if (item.type === 'barchart' || item.type === 'linechart') {
-        const dataPoints = lookupChartResult(metrics, q.deviceID)
+        const dataPoints = lookupChartResult(metrics, q.deviceID, q.y_axis, q.x_axis)
         widgetData.value = {
           ...widgetData.value,
           [item.i]: {
@@ -357,20 +355,16 @@ async function loadExtensionWidgets(layoutData) {
 
 onMounted(async () => {
   const idParam = route.query.id
-  console.log('[DashboardView] onMounted — route.query.id:', idParam)
   if (!idParam) return
 
   loading.value = true
   try {
     const data = await getDashboard({ id: parseInt(idParam) })
-    console.log('[DashboardView] onMounted — getDashboard raw response:', JSON.stringify(data))
     if (data && data.layout_json) {
       const parsed = JSON.parse(data.layout_json)
       const parsedLayout = Array.isArray(parsed) ? parsed : []
       await loadExtensionWidgets(parsedLayout)
       layout.value = parsedLayout
-    } else {
-      console.log('[DashboardView] onMounted — no layout_json in response')
     }
   } catch (e) {
     console.error('Failed to load dashboard:', e)
