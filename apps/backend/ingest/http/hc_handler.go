@@ -1003,7 +1003,7 @@ func extractJSONValue(payloadJSON string, path string) interface{} {
 	return extractValue(root, path)
 }
 
-const defaultTimeSeriesLimit = 100
+const defaultTimeSeriesLimit = 1000
 
 // GetDashboardMetric handles POST /api/get_dashboard_metric
 // Body: { metrics: [{ type, deviceID, column_name, data_type, x_axis, y_axis }] }
