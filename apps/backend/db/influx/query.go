@@ -76,6 +76,143 @@ func QueryDeviceHistory(deviceID string, limit int, startTime time.Time) ([]Proc
 	return queryProcessedPoints(flux)
 }
 
+// SamplePoint is a single downsampled value (e.g. the mean of a field over a time window).
+type SamplePoint struct {
+	Time  time.Time
+	Value interface{}
+}
+
+// fluxRangeStart renders the Flux range()-compatible start for a query.
+func fluxRangeStart(startTime time.Time) string {
+	if startTime.IsZero() {
+		return "1970-01-01T00:00:00Z"
+	}
+	return startTime.Format(time.RFC3339)
+}
+
+// fluxDuration renders a Go duration as a Flux duration literal.
+func fluxDuration(d time.Duration) string {
+	if d <= 0 {
+		d = time.Second
+	}
+	if d%(24*time.Hour) == 0 {
+		return fmt.Sprintf("%dd", d/(24*time.Hour))
+	}
+	if d%time.Hour == 0 {
+		return fmt.Sprintf("%dh", d/time.Hour)
+	}
+	if d%time.Minute == 0 {
+		return fmt.Sprintf("%dm", d/time.Minute)
+	}
+	if d%time.Second == 0 {
+		return fmt.Sprintf("%ds", d/time.Second)
+	}
+	return fmt.Sprintf("%dms", d/time.Millisecond)
+}
+
+// DownsampleWindow computes the aggregation window size needed to keep the total resulting
+// points at or under targetPoints for a given time span. The window is rounded up to a "nice"
+// unit so blocks stay stable across polls, with a 1s floor.
+func DownsampleWindow(span time.Duration, targetPoints int) time.Duration {
+	if targetPoints <= 0 {
+		targetPoints = 1000
+	}
+	w := span / time.Duration(targetPoints)
+	if w <= 0 {
+		w = time.Second
+	}
+	if w < time.Second {
+		w = time.Second
+	}
+	nice := []time.Duration{
+		time.Second,
+		5 * time.Second,
+		10 * time.Second,
+		30 * time.Second,
+		time.Minute,
+		5 * time.Minute,
+		15 * time.Minute,
+		30 * time.Minute,
+		time.Hour,
+		3 * time.Hour,
+		6 * time.Hour,
+		12 * time.Hour,
+		24 * time.Hour,
+		2 * 24 * time.Hour,
+		7 * 24 * time.Hour,
+	}
+	for _, n := range nice {
+		if w <= n {
+			return n
+		}
+	}
+	return w
+}
+
+// QueryDeviceHistoryWindowed returns one representative point per fixed time window covering the
+// whole requested range (using the last point recorded in each window), instead of dropping data
+// beyond a hard limit. Points are returned in ascending time order.
+func QueryDeviceHistoryWindowed(deviceID string, startTime time.Time, every time.Duration) ([]ProcessedPoint, error) {
+	if every <= 0 {
+		every = time.Hour
+	}
+
+	flux := fmt.Sprintf(`
+		from(bucket: "%s")
+			|> range(start: %s)
+			|> filter(fn: (r) => r._measurement == "processed_data" and r.device_id == "%s")
+			|> sort(columns: ["_time"], desc: false)
+			|> aggregateWindow(every: %s, fn: last, createEmpty: false)
+			|> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+			|> group()
+			|> sort(columns: ["_time"], desc: false)
+	`, Bucket, fluxRangeStart(startTime), deviceID, fluxDuration(every))
+
+	return queryProcessedPoints(flux)
+}
+
+// QueryFieldMean aggregates a single numeric field to one mean value per fixed time window during
+// the requested range. It errors when the field is not numeric (e.g. a string/boolean), so callers
+// can fall back to QueryDeviceHistoryWindowed.
+func QueryFieldMean(deviceID string, field string, startTime time.Time, every time.Duration) ([]SamplePoint, error) {
+	if every <= 0 {
+		every = time.Hour
+	}
+
+	flux := fmt.Sprintf(`
+		from(bucket: "%s")
+			|> range(start: %s)
+			|> filter(fn: (r) => r._measurement == "processed_data" and r.device_id == "%s" and r._field == "%s")
+			|> aggregateWindow(every: %s, fn: mean, createEmpty: false)
+	`, Bucket, fluxRangeStart(startTime), deviceID, field, fluxDuration(every))
+
+	slog.Debug("Executing InfluxDB mean query", "flux", flux)
+
+	result, err := queryAPI.Query(context.Background(), flux)
+	if err != nil {
+		return nil, fmt.Errorf("influx mean query failed: %w", err)
+	}
+
+	var points []SamplePoint
+	for result.Next() {
+		rec := result.Record()
+		points = append(points, SamplePoint{
+			Time:  rec.Time(),
+			Value: rec.Value(),
+		})
+	}
+
+	if result.Err() != nil {
+		return nil, fmt.Errorf("influx mean query iteration error: %w", result.Err())
+	}
+
+	if points == nil {
+		points = []SamplePoint{}
+	}
+
+	return points, nil
+}
+
 func QueryLatestByDeviceIDs(deviceIDs []string) (map[string]ProcessedPoint, error) {
 	if len(deviceIDs) == 0 {
 		return map[string]ProcessedPoint{}, nil

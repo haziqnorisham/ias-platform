@@ -289,7 +289,9 @@ The performance-critical path. For each "card" metric, the frontend sends a `dev
    { "metrics": [{ "type": "card", "deviceID": "...", "column_name": "...", "value": 25.5, "processed_at": "..." }] }
    ```
 
-**For barchart/linechart metrics**, the handler calls `influx.QueryDeviceHistory(deviceID, 100)` instead, returning the most recent 100 points ordered chronologically.
+**For barchart/linechart metrics**, the handler downsamples the full requested range into ~1000 fixed time windows (`influx.DownsampleWindow` + `influx.QueryDeviceHistoryWindowed` / `influx.QueryFieldMean`) instead of capping to a fixed number of points:
+- Time-based x-axis + numeric y-axis → `QueryFieldMean` aggregates the y-axis field to its **mean** per window.
+- Non-numeric y-axis (string/bool), custom x-axis field, or a field not stored in InfluxDB → falls back to `QueryDeviceHistoryWindowed`, keeping the **last** point per window (full payload retained, so `extractValue` still works).
 
 ### 4b. Browse: `POST /api/get_processed_data`
 **File:** `ingest/http/hc_handler.go:574`
@@ -323,7 +325,7 @@ Returns recent processed data for a single device (successful decodes only).
 | Frontend use case | Endpoint | InfluxDB function | Flux strategy |
 |---|---|---|---|
 | Dashboard card (latest value) | `/api/get_dashboard_metric` | `QueryLatestByDeviceIDs` | `group → sort desc → limit 1` per device |
-| Dashboard chart (time series) | `/api/get_dashboard_metric` | `QueryDeviceHistory` | filter by device, sort asc, limit 100 |
+| Dashboard chart (time series) | `/api/get_dashboard_metric` | `QueryFieldMean` / `QueryDeviceHistoryWindowed` | full range in ~1000 windows: mean of numeric y-axis, else last point per window |
 | Admin browse page | `/api/get_processed_data` | `QueryProcessedData` | optional device filter, sort, limit/offset |
 | Device history view | `/api/get_device_successful_ingest` | `QueryDeviceHistory` | filter by device, sort desc, limit N |
 

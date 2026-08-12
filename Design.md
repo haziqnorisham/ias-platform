@@ -72,7 +72,7 @@ The dashboard editor supports 5 widget types, each stored as a JSON object in `l
 | `extensionslist` | (auto-fetched) | Scrollable list with Open buttons |
 | `dashboardslist` | (auto-fetched) | Scrollable list with Open buttons |
 
-**Chart data binding**: Widgets with `config.query.deviceID` poll `POST /api/get_dashboard_metric` every N seconds. The backend queries InfluxDB via Flux and returns `data_points: [{x, y, processed_at}]`. The X axis uses `type: 'time'` in ECharts (auto-formatted labels). Y axis is a dot-separated payload path (e.g. `object.temperature`). Cards receive the latest scalar value via `column_name`.
+**Chart data binding**: Widgets with `config.query.deviceID` poll `POST /api/get_dashboard_metric` every N seconds. The backend queries InfluxDB via Flux and returns `data_points: [{x, y, processed_at}]`. The X axis uses `type: 'time'` in ECharts (auto-formatted labels). Y axis is a dot-separated payload path (e.g. `object.temperature`). Cards receive the latest scalar value via `column_name`. Chart series are downsampled server-side: the requested range is split into ~1000 time windows, averaging numeric y-axis fields per window and falling back to one representative point per window for non-numeric values — so long ranges (e.g. 1 year) are not truncated to the latest points.
 
 **Dashboard controls**: Above the grid, a controls panel (`#1a1a1a` bg, `#2a2a2e` border, 8px radius) holds the time range selector (5m through 1yr + custom date picker), a refresh interval dropdown (5s/10s/30s/60s/Off), and a countdown timer with an SVG progress ring (`#48897b` stroke on `#2a2a2e` track).
 

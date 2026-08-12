@@ -1125,6 +1125,44 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 		startTime = *req.Start
 	}
 
+	// Downsample the requested range into ~defaultTimeSeriesLimit time windows so charts show the
+	// whole range instead of only the most recent points.
+	span := time.Since(startTime)
+	if span <= 0 {
+		span = time.Hour
+	}
+	every := ias_influx.DownsampleWindow(span, defaultTimeSeriesLimit)
+
+	// windowedPoints keeps one representative point (the last recorded) per window and extracts
+	// x/y from the stored payload, preserving historical behavior for non-numeric values.
+	windowedPoints := func(deviceID, xAxis, yAxis string) []DataPoint {
+		points, err := ias_influx.QueryDeviceHistoryWindowed(deviceID, startTime, every)
+		if err != nil {
+			slog.Error("Failed to query windowed time-series data",
+				"deviceID", deviceID,
+				"error", err,
+				"process", "hc_handler_main",
+			)
+			return []DataPoint{}
+		}
+
+		dataPoints := make([]DataPoint, 0, len(points))
+		for _, p := range points {
+			pt := p.MeasuredAt
+			dp := DataPoint{
+				Y: extractValue(p.Payload, yAxis),
+			}
+			if xAxis == "" {
+				dp.X = pt
+			} else {
+				dp.X = extractValue(p.Payload, xAxis)
+			}
+			dp.ProcessedAt = &pt
+			dataPoints = append(dataPoints, dp)
+		}
+		return dataPoints
+	}
+
 	// Build response
 	results := make([]MetricResponse, len(req.Metrics))
 	for i, m := range req.Metrics {
@@ -1149,32 +1187,29 @@ func GetDashboardMetric(w http.ResponseWriter, r *http.Request) {
 				YAxis:    m.YAxis,
 			}
 
-			points, err := ias_influx.QueryDeviceHistory(m.DeviceID, defaultTimeSeriesLimit, startTime)
-			if err != nil {
-				slog.Error("Failed to query time-series data",
+			// With a time-based x-axis, prefer aggregating the numeric y-axis field to its mean
+			// per window. QueryFieldMean errors when the field is non-numeric, in which case we
+			// fall back to one representative (last) point per window.
+			if m.XAxis == "" && m.YAxis != "" {
+				means, err := ias_influx.QueryFieldMean(m.DeviceID, m.YAxis, startTime, every)
+				if err == nil {
+					dataPoints := make([]DataPoint, 0, len(means))
+					for _, sp := range means {
+						pt := sp.Time
+						dataPoints = append(dataPoints, DataPoint{X: pt, Y: sp.Value, ProcessedAt: &pt})
+					}
+					results[i].DataPoints = dataPoints
+					continue
+				}
+				slog.Debug("Mean aggregation not supported, using per-window last point",
 					"deviceID", m.DeviceID,
+					"y_axis", m.YAxis,
 					"error", err,
 					"process", "hc_handler_main",
 				)
-				results[i].DataPoints = []DataPoint{}
-				continue
 			}
 
-			dataPoints := make([]DataPoint, 0, len(points))
-			for _, p := range points {
-				dp := DataPoint{
-					Y: extractValue(p.Payload, m.YAxis),
-				}
-				pt := p.MeasuredAt
-				if m.XAxis == "" {
-					dp.X = pt
-				} else {
-					dp.X = extractValue(p.Payload, m.XAxis)
-				}
-				dp.ProcessedAt = &pt
-				dataPoints = append(dataPoints, dp)
-			}
-			results[i].DataPoints = dataPoints
+			results[i].DataPoints = windowedPoints(m.DeviceID, m.XAxis, m.YAxis)
 		}
 	}
 
